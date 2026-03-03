@@ -29,7 +29,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json<LoaderData>({ books: [], query: "", totalItems: 0, page: 1 });
   }
 
-  const apiUrl = new URL(`${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/search`);
+  const apiUrl = new URL(
+    `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/search`,
+  );
   apiUrl.searchParams.set("q", query);
   apiUrl.searchParams.set("page", String(page));
 
