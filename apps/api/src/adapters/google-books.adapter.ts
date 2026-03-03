@@ -42,7 +42,7 @@ const toBook = (item: GoogleBooksItem): Book => ({
 
 export const createGoogleBooksAdapter = (): BookRepositoryPort => ({
   search: async (query: SearchBooksQuery) => {
-    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+    const apiKey = process.env["GOOGLE_BOOKS_API_KEY"];
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
     const startIndex = (page - 1) * pageSize;
