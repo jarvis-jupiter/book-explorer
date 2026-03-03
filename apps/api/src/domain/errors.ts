@@ -19,7 +19,7 @@ export const conflict = (message: string): DomainError => ({ kind: "Conflict", m
 export const validationError = (message: string, fields?: Record<string, string>): DomainError => ({
   kind: "ValidationError",
   message,
-  fields,
+  ...(fields !== undefined ? { fields } : {}),
 });
 export const externalServiceError = (message: string): DomainError => ({
   kind: "ExternalServiceError",

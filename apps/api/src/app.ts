@@ -1,5 +1,5 @@
 import cors from "cors";
-import express from "express";
+import express, { type Express } from "express";
 import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
 import { createBooksRouter } from "./adapters/http/routes/books.router.js";
 import type { BookmarkRepositoryPort } from "./ports/bookmark-repository.port.js";
@@ -14,7 +14,7 @@ type AppDependencies = {
   readonly bookmarkRepository: BookmarkRepositoryPort;
 };
 
-export const createApp = (deps: AppDependencies) => {
+export const createApp = (deps: AppDependencies): Express => {
   const app = express();
 
   app.use(cors());

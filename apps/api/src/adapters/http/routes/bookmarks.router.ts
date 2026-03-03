@@ -60,7 +60,7 @@ export const createBookmarksRouter = (
 
   router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     const userId = (req as AuthenticatedRequest).userId;
-    const bookmarkId = req.params.id ?? "";
+    const bookmarkId = String(req.params["id"] ?? "");
 
     const result = await removeBookmarkUseCase.execute({ userId, bookmarkId });
 
