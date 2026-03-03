@@ -18,7 +18,8 @@ COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_module
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
-RUN pnpm --filter @book-explorer/domain build && \
+RUN pnpm --filter @book-explorer/db db:generate && \
+    pnpm --filter @book-explorer/domain build && \
     pnpm --filter @book-explorer/db build && \
     pnpm --filter @book-explorer/api build
 
