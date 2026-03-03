@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import type { BookmarkRepositoryPort } from "../../ports/bookmark-repository.port.js";
 import type { Bookmark } from "@book-explorer/domain";
-import { createAddBookmarkUseCase } from "../add-bookmark.use-case.js";
-import { ok, err } from "../../domain/result.js";
+import { describe, expect, it, vi } from "vitest";
 import { conflict } from "../../domain/errors.js";
+import { err, ok } from "../../domain/result.js";
+import type { BookmarkRepositoryPort } from "../../ports/bookmark-repository.port.js";
+import { createAddBookmarkUseCase } from "../add-bookmark.use-case.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

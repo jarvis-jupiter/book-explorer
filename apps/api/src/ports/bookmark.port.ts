@@ -1,4 +1,10 @@
-import type { Bookmark, BookmarkId, CreateBookmarkInput, RemoveBookmarkInput, UserId } from "@book-explorer/domain";
+import type {
+  Bookmark,
+  BookmarkId,
+  CreateBookmarkInput,
+  RemoveBookmarkInput,
+  UserId,
+} from "@book-explorer/domain";
 import type { Result } from "../domain/result.js";
 
 // Inbound ports — use-case interfaces

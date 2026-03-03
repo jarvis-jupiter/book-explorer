@@ -1,7 +1,7 @@
+import { getAuth } from "@clerk/remix/ssr.server";
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { getAuth } from "@clerk/remix/ssr.server";
 
 export const meta: MetaFunction = () => [{ title: "My Bookmarks — Book Explorer" }];
 
@@ -32,7 +32,7 @@ export async function loader(args: LoaderFunctionArgs) {
     return json({ bookmarks: [] as Bookmark[] });
   }
 
-  const bookmarks = await response.json() as Bookmark[];
+  const bookmarks = (await response.json()) as Bookmark[];
   return json({ bookmarks });
 }
 
@@ -65,7 +65,9 @@ export default function BookmarksPage() {
               <div className="flex flex-col gap-1 min-w-0">
                 <h2 className="font-semibold text-gray-900 truncate">{bookmark.bookTitle}</h2>
                 {bookmark.bookAuthors.length > 0 && (
-                  <p className="text-sm text-gray-500 truncate">{bookmark.bookAuthors.join(", ")}</p>
+                  <p className="text-sm text-gray-500 truncate">
+                    {bookmark.bookAuthors.join(", ")}
+                  </p>
                 )}
               </div>
             </li>

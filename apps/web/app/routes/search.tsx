@@ -29,7 +29,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json<LoaderData>({ books: [], query: "", totalItems: 0, page: 1 });
   }
 
-  const apiUrl = new URL(`${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/search`);
+  const apiUrl = new URL(
+    `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/search`,
+  );
   apiUrl.searchParams.set("q", query);
   apiUrl.searchParams.set("page", String(page));
 
@@ -39,11 +41,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json<LoaderData>({ books: [], query, totalItems: 0, page });
   }
 
-  const data = await response.json() as { books: Book[]; totalItems: number; page: number };
+  const data = (await response.json()) as { books: Book[]; totalItems: number; page: number };
   return json<LoaderData>({ books: data.books, query, totalItems: data.totalItems, page });
 }
 
 export default function SearchPage() {
+  // biome-ignore lint/correctness/noUnusedVariables: totalItems is used in JSX below
   const { books, query, totalItems, page } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSearching = navigation.state === "loading";
@@ -73,7 +76,8 @@ export default function SearchPage() {
 
       {!isSearching && query && (
         <p className="mb-4 text-gray-600">
-          {totalItems} result{totalItems !== 1 ? "s" : ""} for <strong>&ldquo;{query}&rdquo;</strong>
+          {totalItems} result{totalItems !== 1 ? "s" : ""} for{" "}
+          <strong>&ldquo;{query}&rdquo;</strong>
         </p>
       )}
 
@@ -95,9 +99,7 @@ export default function SearchPage() {
               {book.authors.length > 0 && (
                 <p className="text-sm text-gray-500 truncate">{book.authors.join(", ")}</p>
               )}
-              {book.publisher && (
-                <p className="text-xs text-gray-400">{book.publisher}</p>
-              )}
+              {book.publisher && <p className="text-xs text-gray-400">{book.publisher}</p>}
               {book.description && (
                 <p className="text-xs text-gray-600 mt-1 line-clamp-3">{book.description}</p>
               )}

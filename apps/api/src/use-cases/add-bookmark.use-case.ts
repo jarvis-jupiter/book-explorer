@@ -1,8 +1,8 @@
 import type { Bookmark, CreateBookmarkInput } from "@book-explorer/domain";
-import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
+import { conflict, validationError } from "../domain/errors.js";
 import type { Result } from "../domain/result.js";
 import { err } from "../domain/result.js";
-import { conflict, validationError } from "../domain/errors.js";
+import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
 
 export type AddBookmarkUseCase = {
   readonly execute: (input: CreateBookmarkInput) => Promise<Result<Bookmark>>;

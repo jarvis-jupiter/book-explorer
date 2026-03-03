@@ -1,5 +1,5 @@
-import type { EntryContext } from "@remix-run/node";
 import { PassThrough } from "node:stream";
+import type { EntryContext } from "@remix-run/node";
 import { createReadableStreamFromReadable } from "@remix-run/node";
 import { RemixServer } from "@remix-run/react";
 import { isbot } from "isbot";
@@ -15,6 +15,7 @@ export default function handleRequest(
 ) {
   return new Promise((resolve, reject) => {
     let shellRendered = false;
+    let statusCode = responseStatusCode;
     const userAgent = request.headers.get("user-agent");
     const callbackName = isbot(userAgent ?? "") ? "onAllReady" : "onShellReady";
 
@@ -31,7 +32,7 @@ export default function handleRequest(
           resolve(
             new Response(stream, {
               headers: responseHeaders,
-              status: responseStatusCode,
+              status: statusCode,
             }),
           );
 
@@ -41,8 +42,9 @@ export default function handleRequest(
           reject(error);
         },
         onError(error: unknown) {
-          responseStatusCode = 500;
+          statusCode = 500;
           if (shellRendered) {
+            // biome-ignore lint/suspicious/noConsole: framework error handler, console.error is appropriate here
             console.error(error);
           }
         },

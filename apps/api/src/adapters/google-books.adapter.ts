@@ -1,7 +1,7 @@
 import type { Book, BookSearchResult, SearchBooksQuery } from "@book-explorer/domain";
-import type { BookRepositoryPort } from "../ports/book-repository.port.js";
-import { err, ok } from "../domain/result.js";
 import { externalServiceError } from "../domain/errors.js";
+import { err, ok } from "../domain/result.js";
+import type { BookRepositoryPort } from "../ports/book-repository.port.js";
 
 const GOOGLE_BOOKS_BASE_URL = "https://www.googleapis.com/books/v1/volumes";
 
@@ -33,8 +33,7 @@ const toBook = (item: GoogleBooksItem): Book => ({
   authors: item.volumeInfo.authors ?? [],
   publisher: item.volumeInfo.publisher ?? null,
   description: item.volumeInfo.description ?? null,
-  coverUrl:
-    item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") ?? null,
+  coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") ?? null,
   publishedDate: item.volumeInfo.publishedDate ?? null,
   pageCount: item.volumeInfo.pageCount ?? null,
   categories: item.volumeInfo.categories ?? [],
