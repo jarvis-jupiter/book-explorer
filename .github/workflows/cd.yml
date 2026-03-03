@@ -1,0 +1,48 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+# Ensure CD only runs after CI has passed on main
+# CI is triggered by the same push event; this workflow waits for it
+jobs:
+  wait-for-ci:
+    name: Wait for CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for CI checks to pass
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: "Biome · Type Check · Tests"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 15
+
+  deploy-api:
+    name: Deploy API → Railway
+    runs-on: ubuntu-latest
+    needs: wait-for-ci
+    steps:
+      - name: Trigger Railway API deployment
+        run: |
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"
+            }' | jq .
+
+  deploy-web:
+    name: Deploy Web → Railway
+    runs-on: ubuntu-latest
+    needs: wait-for-ci
+    steps:
+      - name: Trigger Railway Web deployment
+        run: |
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_WEB_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"
+            }' | jq .
