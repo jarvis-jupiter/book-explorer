@@ -1,12 +1,12 @@
-import type { NextFunction, Request, Response } from "express";
 import { createClerkClient } from "@clerk/backend";
+import type { NextFunction, Request, Response } from "express";
 
 export type AuthenticatedRequest = Request & {
   userId: string;
 };
 
 const clerkClient = createClerkClient({
-  secretKey: process.env["CLERK_SECRET_KEY"] ?? "",
+  secretKey: process.env.CLERK_SECRET_KEY ?? "",
 });
 
 export const requireAuth = async (
@@ -23,7 +23,7 @@ export const requireAuth = async (
 
   try {
     const payload = await clerkClient.verifyToken(token, {
-      jwtKey: process.env["CLERK_JWT_KEY"],
+      jwtKey: process.env.CLERK_JWT_KEY,
     });
 
     (req as AuthenticatedRequest).userId = payload.sub;

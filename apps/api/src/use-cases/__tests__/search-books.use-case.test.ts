@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import type { BookRepositoryPort } from "../../ports/book-repository.port.js";
 import type { BookSearchResult } from "@book-explorer/domain";
-import { createSearchBooksUseCase } from "../search-books.use-case.js";
-import { ok, err } from "../../domain/result.js";
+import { describe, expect, it, vi } from "vitest";
 import { externalServiceError } from "../../domain/errors.js";
+import { err, ok } from "../../domain/result.js";
+import type { BookRepositoryPort } from "../../ports/book-repository.port.js";
+import { createSearchBooksUseCase } from "../search-books.use-case.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -29,9 +29,7 @@ const makeSearchResult = (overrides: Partial<BookSearchResult> = {}): BookSearch
   ...overrides,
 });
 
-const makeBookRepository = (
-  overrides: Partial<BookRepositoryPort> = {},
-): BookRepositoryPort => ({
+const makeBookRepository = (overrides: Partial<BookRepositoryPort> = {}): BookRepositoryPort => ({
   search: vi.fn().mockResolvedValue(ok(makeSearchResult())),
   ...overrides,
 });
@@ -112,9 +110,7 @@ describe("searchBooks use case", () => {
 
       await useCase.execute({ query: "TypeScript", pageSize: 100 });
 
-      expect(repository.search).toHaveBeenCalledWith(
-        expect.objectContaining({ pageSize: 40 }),
-      );
+      expect(repository.search).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 40 }));
     });
   });
 

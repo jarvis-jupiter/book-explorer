@@ -1,7 +1,7 @@
 import type { Book, BookSearchResult, SearchBooksQuery } from "@book-explorer/domain";
-import type { BookRepositoryPort } from "../ports/book-repository.port.js";
-import { err, ok } from "../domain/result.js";
 import { externalServiceError } from "../domain/errors.js";
+import { err, ok } from "../domain/result.js";
+import type { BookRepositoryPort } from "../ports/book-repository.port.js";
 
 const GOOGLE_BOOKS_BASE_URL = "https://www.googleapis.com/books/v1/volumes";
 
@@ -33,8 +33,7 @@ const toBook = (item: GoogleBooksItem): Book => ({
   authors: item.volumeInfo.authors ?? [],
   publisher: item.volumeInfo.publisher ?? null,
   description: item.volumeInfo.description ?? null,
-  coverUrl:
-    item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") ?? null,
+  coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace("http://", "https://") ?? null,
   publishedDate: item.volumeInfo.publishedDate ?? null,
   pageCount: item.volumeInfo.pageCount ?? null,
   categories: item.volumeInfo.categories ?? [],
@@ -43,7 +42,7 @@ const toBook = (item: GoogleBooksItem): Book => ({
 
 export const createGoogleBooksAdapter = (): BookRepositoryPort => ({
   search: async (query: SearchBooksQuery) => {
-    const apiKey = process.env["GOOGLE_BOOKS_API_KEY"];
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
     const startIndex = (page - 1) * pageSize;

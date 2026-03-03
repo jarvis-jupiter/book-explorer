@@ -1,8 +1,8 @@
 import type { RemoveBookmarkInput } from "@book-explorer/domain";
-import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
+import { forbidden, notFound } from "../domain/errors.js";
 import type { Result } from "../domain/result.js";
 import { err } from "../domain/result.js";
-import { forbidden, notFound } from "../domain/errors.js";
+import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
 
 export type RemoveBookmarkUseCase = {
   readonly execute: (input: RemoveBookmarkInput) => Promise<Result<void>>;

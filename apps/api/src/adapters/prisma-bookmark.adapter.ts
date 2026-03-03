@@ -1,8 +1,8 @@
 import type { PrismaClient } from "@book-explorer/db";
 import type { Bookmark, BookmarkId, CreateBookmarkInput, UserId } from "@book-explorer/domain";
-import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
-import { err, ok } from "../domain/result.js";
 import { conflict, notFound } from "../domain/errors.js";
+import { err, ok } from "../domain/result.js";
+import type { BookmarkRepositoryPort } from "../ports/bookmark-repository.port.js";
 
 const toBookmark = (row: {
   id: string;

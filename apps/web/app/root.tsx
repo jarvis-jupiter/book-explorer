@@ -1,3 +1,5 @@
+import { ClerkApp } from "@clerk/remix";
+import { rootAuthLoader } from "@clerk/remix/ssr.server";
 import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import {
   Links,
@@ -5,11 +7,9 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useRouteError,
   isRouteErrorResponse,
+  useRouteError,
 } from "@remix-run/react";
-import { rootAuthLoader } from "@clerk/remix/ssr.server";
-import { ClerkApp } from "@clerk/remix";
 import stylesheet from "./tailwind.css?url";
 
 export const links: LinksFunction = () => [

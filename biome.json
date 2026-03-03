@@ -13,11 +13,11 @@
       "style": {
         "useConst": "error",
         "useTemplate": "error",
-        "noParameterAssign": "error"
+        "noParameterAssign": "warn"
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsoleLog": "warn"
+        "noConsole": "warn"
       },
       "correctness": {
         "noUnusedVariables": "error",
@@ -39,13 +39,6 @@
     }
   },
   "files": {
-    "ignore": [
-      "node_modules",
-      "dist",
-      "build",
-      ".turbo",
-      "coverage",
-      "*.tsbuildinfo"
-    ]
+    "ignore": ["node_modules", "dist", "build", ".turbo", "coverage", "*.tsbuildinfo"]
   }
 }

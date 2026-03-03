@@ -1,11 +1,11 @@
-import express from "express";
 import cors from "cors";
-import type { SearchBooksUseCase } from "./use-cases/search-books.use-case.js";
+import express from "express";
+import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
+import { createBooksRouter } from "./adapters/http/routes/books.router.js";
+import type { BookmarkRepositoryPort } from "./ports/bookmark-repository.port.js";
 import type { AddBookmarkUseCase } from "./use-cases/add-bookmark.use-case.js";
 import type { RemoveBookmarkUseCase } from "./use-cases/remove-bookmark.use-case.js";
-import type { BookmarkRepositoryPort } from "./ports/bookmark-repository.port.js";
-import { createBooksRouter } from "./adapters/http/routes/books.router.js";
-import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
+import type { SearchBooksUseCase } from "./use-cases/search-books.use-case.js";
 
 type AppDependencies = {
   readonly searchBooksUseCase: SearchBooksUseCase;

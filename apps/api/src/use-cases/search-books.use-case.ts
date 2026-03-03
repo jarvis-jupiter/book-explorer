@@ -1,8 +1,8 @@
 import type { BookSearchResult, SearchBooksQuery } from "@book-explorer/domain";
-import type { BookRepositoryPort } from "../ports/book-repository.port.js";
+import { validationError } from "../domain/errors.js";
 import type { Result } from "../domain/result.js";
 import { err } from "../domain/result.js";
-import { validationError } from "../domain/errors.js";
+import type { BookRepositoryPort } from "../ports/book-repository.port.js";
 
 export type SearchBooksUseCase = {
   readonly execute: (query: SearchBooksQuery) => Promise<Result<BookSearchResult>>;
