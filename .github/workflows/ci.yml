@@ -46,14 +46,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm --filter @book-explorer/db db:generate
+
       - name: Biome — lint & format check
         run: pnpm biome check --no-errors-on-unmatched .
 
       - name: Type check
         run: pnpm turbo typecheck
-
-      - name: Generate Prisma client
-        run: pnpm --filter @book-explorer/db db:generate
 
       - name: Run database migrations
         run: pnpm --filter @book-explorer/db db:migrate
