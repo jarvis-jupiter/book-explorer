@@ -29,8 +29,8 @@ export default defineConfig({
   // Playwright waits for the URL to be reachable before starting tests.
   webServer: [
     {
-      // API: tsx dev server — no compile step, starts fast
-      command: "pnpm --filter @book-explorer/api dev",
+      // API: run compiled output (build is done before E2E in CI via turbo build --force)
+      command: "pnpm --filter @book-explorer/api start",
       url: `${API_URL}/health`,
       reuseExistingServer: !process.env["CI"],
       env: {
