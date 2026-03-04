@@ -117,7 +117,7 @@ jobs:
         run: pnpm --filter @book-explorer/e2e exec playwright install chromium --with-deps
 
       - name: Run E2E tests
-        run: pnpm --filter @book-explorer/e2e test
+        run: pnpm --filter @book-explorer/e2e e2e
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

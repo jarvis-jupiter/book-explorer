@@ -26,36 +26,39 @@ export default defineConfig({
   ],
 
   // Start API + Web servers before running tests.
-  // Playwright waits for the reuseExistingServer URLs before starting tests.
+  // Playwright waits for the URL to be reachable before starting tests.
   webServer: [
     {
+      // API: tsx dev server — no compile step, starts fast
       command: "pnpm --filter @book-explorer/api dev",
       url: `${API_URL}/health`,
       reuseExistingServer: !process.env["CI"],
       env: {
         API_PORT: "3001",
+        PORT: "3001",
         DATABASE_URL:
           process.env["DATABASE_URL"] ??
           "postgresql://postgres:postgres@localhost:5432/book_explorer_test",
-        GOOGLE_BOOKS_API_KEY: process.env["GOOGLE_BOOKS_API_KEY"] ?? "test-key",
+        GOOGLE_BOOKS_API_KEY: process.env["GOOGLE_BOOKS_API_KEY"] ?? "",
         NODE_ENV: "test",
       },
-      timeout: 60_000,
+      timeout: 90_000,
     },
     {
-      command: "pnpm --filter @book-explorer/web build && pnpm --filter @book-explorer/web start",
+      // Web: build domain + web, then serve with remix-serve
+      command:
+        "pnpm --filter @book-explorer/domain build && pnpm --filter @book-explorer/web build && pnpm --filter @book-explorer/web start",
       url: WEB_URL,
       reuseExistingServer: !process.env["CI"],
       env: {
         PORT: "3000",
         API_BASE_URL: API_URL,
         NODE_ENV: "production",
-        // Clerk keys — mocked/disabled in test env; pages that require auth will
-        // redirect rather than error
+        // Clerk placeholder keys — pages requiring auth will redirect rather than error
         CLERK_PUBLISHABLE_KEY: process.env["CLERK_PUBLISHABLE_KEY"] ?? "pk_test_placeholder",
         CLERK_SECRET_KEY: process.env["CLERK_SECRET_KEY"] ?? "sk_test_placeholder",
       },
-      timeout: 120_000,
+      timeout: 180_000,
     },
   ],
 });
