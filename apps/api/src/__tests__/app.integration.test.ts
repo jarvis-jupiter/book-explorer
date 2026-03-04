@@ -83,6 +83,23 @@ describe("GET /api/books/search", () => {
   });
 });
 
+describe("GET /api/books/search — validation", () => {
+  it("returns 400 when q param is missing", async () => {
+    const app = makeApp();
+    const res = await supertest(app).get("/api/books/search");
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty("error");
+    expect(res.body).toHaveProperty("details");
+  });
+
+  it("returns 400 when page is not a positive integer", async () => {
+    const app = makeApp();
+    const res = await supertest(app).get("/api/books/search?q=test&page=abc");
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty("details");
+  });
+});
+
 describe("GET /api/bookmarks", () => {
   it("returns 401 without an authorization header", async () => {
     const app = makeApp();

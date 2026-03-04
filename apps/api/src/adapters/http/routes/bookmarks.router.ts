@@ -1,10 +1,15 @@
+import { CreateBookmarkInputSchema } from "@book-explorer/domain";
 import { Router } from "express";
 import type { Request, Response } from "express";
 import type { BookmarkRepositoryPort } from "../../../ports/bookmark-repository.port.js";
 import type { AddBookmarkUseCase } from "../../../use-cases/add-bookmark.use-case.js";
 import type { RemoveBookmarkUseCase } from "../../../use-cases/remove-bookmark.use-case.js";
+import { parseRequest } from "../../parse-request.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+
+// Body schema — userId comes from auth middleware, not from body
+const CreateBookmarkBodySchema = CreateBookmarkInputSchema.omit({ userId: true });
 
 export const createBookmarksRouter = (
   addBookmarkUseCase: AddBookmarkUseCase,
@@ -29,19 +34,20 @@ export const createBookmarksRouter = (
 
   router.post("/", async (req: Request, res: Response): Promise<void> => {
     const userId = (req as AuthenticatedRequest).userId;
-    const { bookId, bookTitle, bookCoverUrl, bookAuthors } = req.body as {
-      bookId?: string;
-      bookTitle?: string;
-      bookCoverUrl?: string | null;
-      bookAuthors?: string[];
-    };
+
+    const parsed = parseRequest(CreateBookmarkBodySchema, req.body);
+
+    if (!parsed.ok) {
+      res.status(400).json({
+        error: parsed.error.message,
+        details: parsed.error.kind === "ValidationError" ? parsed.error.fields : [],
+      });
+      return;
+    }
 
     const result = await addBookmarkUseCase.execute({
       userId,
-      bookId: bookId ?? "",
-      bookTitle: bookTitle ?? "",
-      bookCoverUrl: bookCoverUrl ?? null,
-      bookAuthors: bookAuthors ?? [],
+      ...parsed.value,
     });
 
     if (!result.ok) {
