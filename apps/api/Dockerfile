@@ -35,14 +35,21 @@ RUN pnpm --filter @book-explorer/db db:generate && \
 # Note: pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded;
 # we copy it explicitly below.
 RUN pnpm deploy --filter @book-explorer/api --prod /prod/api
-RUN cp -r apps/api/dist /prod/api/dist
+
+# pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded.
+# .prisma/client/ (generated runtime) is not in the pnpm store either.
+# Copy both explicitly from the build workspace.
+RUN cp -r apps/api/dist /prod/api/dist && \
+    mkdir -p /prod/api/node_modules/.prisma && \
+    cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client /prod/api/node_modules/.prisma/client
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
 ENV NODE_ENV=production
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+# Prisma needs openssl for query engine binaries
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Run as non-root user (security best practice)
 RUN groupadd --system --gid 1001 nodejs && \
