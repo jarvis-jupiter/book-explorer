@@ -8,6 +8,9 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # ── Build: install all deps, generate Prisma client, compile TypeScript ────────
 FROM base AS build
+# openssl needed by prisma generate to detect the correct query engine binary
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /usr/src/app
 
 # Copy manifests first so this layer is cached unless deps change
