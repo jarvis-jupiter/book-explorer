@@ -39,9 +39,14 @@ RUN pnpm deploy --filter @book-explorer/api --prod /prod/api
 # pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded.
 # .prisma/client/ (generated runtime) is not in the pnpm store either.
 # Copy both explicitly from the build workspace.
+# The generated client must go into EVERY .prisma/client/ location that
+# @prisma/client might resolve from (both hoisted and within .pnpm).
 RUN cp -r apps/api/dist /prod/api/dist && \
-    mkdir -p /prod/api/node_modules/.prisma && \
-    cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client /prod/api/node_modules/.prisma/client
+    for target in $(find /prod/api/node_modules -path "*/.prisma/client" -type d 2>/dev/null); do \
+      cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/* "$target/"; \
+    done && \
+    mkdir -p /prod/api/node_modules/.prisma/client && \
+    cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/* /prod/api/node_modules/.prisma/client/
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
