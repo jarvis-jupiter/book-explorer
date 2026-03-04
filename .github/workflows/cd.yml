@@ -55,6 +55,10 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
+          # Disable provenance/sbom — they create an OCI image index that some
+          # container runtimes (including Railway) cannot pull correctly.
+          provenance: false
+          sbom: false
           tags: |
             ${{ matrix.image }}:latest
             ${{ matrix.image }}:${{ github.sha }}
