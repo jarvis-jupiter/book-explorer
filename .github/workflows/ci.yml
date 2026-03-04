@@ -114,7 +114,7 @@ jobs:
         run: pnpm --filter @book-explorer/db db:migrate
 
       - name: Build workspace packages
-        run: pnpm turbo build
+        run: pnpm turbo build --force
 
       - name: Install Playwright browsers
         run: pnpm --filter @book-explorer/e2e exec playwright install chromium --with-deps
