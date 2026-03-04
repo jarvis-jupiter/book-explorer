@@ -44,13 +44,15 @@ RUN cp -r packages/db/prisma /prod/api/prisma
 # Copy the generated Prisma client (.prisma/client/) from the workspace into
 # the deployment's node_modules. The pnpm flat path includes a hash of peer
 # deps so we find the target directory dynamically.
+# @prisma/client resolves .prisma/client as a sibling of @prisma/ in node_modules
+# i.e. …/node_modules/.prisma/client (NOT …/node_modules/@prisma/.prisma/client)
 RUN PRISMA_SRC=$(find node_modules/.pnpm -path "*/@prisma+client*/node_modules/.prisma/client" -type d | head -1) && \
-    PRISMA_DST=$(find /prod/api/node_modules/.pnpm -path "*/@prisma+client*/node_modules/@prisma/client" -type d | head -1) && \
+    PRISMA_NM=$(find /prod/api/node_modules/.pnpm -path "*/@prisma+client*/node_modules/@prisma/client" -type d | head -1 | sed 's|/node_modules/@prisma/client$|/node_modules|') && \
     echo "Copying generated Prisma client:" && \
     echo "  from: $PRISMA_SRC" && \
-    echo "  to:   $(dirname $PRISMA_DST)/.prisma/client" && \
-    mkdir -p "$(dirname $PRISMA_DST)/.prisma/client" && \
-    cp -r "$PRISMA_SRC"/* "$(dirname $PRISMA_DST)/.prisma/client/"
+    echo "  to:   $PRISMA_NM/.prisma/client" && \
+    mkdir -p "$PRISMA_NM/.prisma/client" && \
+    cp -r "$PRISMA_SRC"/* "$PRISMA_NM/.prisma/client/"
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
