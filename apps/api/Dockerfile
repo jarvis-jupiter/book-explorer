@@ -48,4 +48,4 @@ COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "cd /app && npx prisma generate --schema packages/db/prisma/schema.prisma && node apps/api/dist/index.js"]
