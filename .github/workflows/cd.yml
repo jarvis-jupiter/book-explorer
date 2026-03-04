@@ -58,7 +58,8 @@ jobs:
           tags: |
             ${{ matrix.image }}:latest
             ${{ matrix.image }}:${{ github.sha }}
-          no-cache: true
+          cache-from: type=gha,scope=${{ matrix.service }}-v3
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-v3
 
   deploy-api:
     name: Deploy API → Railway
