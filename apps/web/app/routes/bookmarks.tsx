@@ -1,7 +1,7 @@
 import { getAuth } from "@clerk/remix/ssr.server";
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { Form, useLoaderData } from "@remix-run/react";
 
 export const meta: MetaFunction = () => [{ title: "My Bookmarks — Book Explorer" }];
 
@@ -36,6 +36,30 @@ export async function loader(args: LoaderFunctionArgs) {
   return json({ bookmarks });
 }
 
+export async function action(args: ActionFunctionArgs) {
+  const { userId, getToken } = await getAuth(args);
+
+  if (!userId) {
+    return redirect("/sign-in");
+  }
+
+  const formData = await args.request.formData();
+  const bookmarkId = formData.get("bookmarkId");
+  const intent = formData.get("intent");
+
+  if (intent === "remove" && bookmarkId) {
+    const token = await getToken();
+    const apiUrl = `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/bookmarks/${bookmarkId}`;
+
+    await fetch(apiUrl, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token ?? ""}` },
+    });
+  }
+
+  return redirect("/bookmarks");
+}
+
 export default function BookmarksPage() {
   const { bookmarks } = useLoaderData<typeof loader>();
 
@@ -53,23 +77,35 @@ export default function BookmarksPage() {
           {bookmarks.map((bookmark) => (
             <li
               key={bookmark.id}
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex gap-4"
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col gap-3"
             >
-              {bookmark.bookCoverUrl && (
-                <img
-                  src={bookmark.bookCoverUrl}
-                  alt={`Cover of ${bookmark.bookTitle}`}
-                  className="h-28 w-20 rounded object-cover flex-shrink-0"
-                />
-              )}
-              <div className="flex flex-col gap-1 min-w-0">
-                <h2 className="font-semibold text-gray-900 truncate">{bookmark.bookTitle}</h2>
-                {bookmark.bookAuthors.length > 0 && (
-                  <p className="text-sm text-gray-500 truncate">
-                    {bookmark.bookAuthors.join(", ")}
-                  </p>
+              <div className="flex gap-4">
+                {bookmark.bookCoverUrl && (
+                  <img
+                    src={bookmark.bookCoverUrl}
+                    alt={`Cover of ${bookmark.bookTitle}`}
+                    className="h-28 w-20 rounded object-cover flex-shrink-0"
+                  />
                 )}
+                <div className="flex flex-col gap-1 min-w-0">
+                  <h2 className="font-semibold text-gray-900 truncate">{bookmark.bookTitle}</h2>
+                  {bookmark.bookAuthors.length > 0 && (
+                    <p className="text-sm text-gray-500 truncate">
+                      {bookmark.bookAuthors.join(", ")}
+                    </p>
+                  )}
+                </div>
               </div>
+              <Form method="post">
+                <input type="hidden" name="intent" value="remove" />
+                <input type="hidden" name="bookmarkId" value={bookmark.id} />
+                <button
+                  type="submit"
+                  className="w-full rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Remove
+                </button>
+              </Form>
             </li>
           ))}
         </ul>
