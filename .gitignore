@@ -47,3 +47,4 @@ coverage/
 
 # Docker
 .docker/
+packages/db/generated

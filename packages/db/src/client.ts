@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/client/index.js";
 
 // Singleton pattern for Prisma client — prevents connection pool exhaustion
 // in long-running server processes and during hot module reloads.
