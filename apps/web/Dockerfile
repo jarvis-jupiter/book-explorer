@@ -25,7 +25,10 @@ RUN pnpm --filter @book-explorer/domain build && \
     pnpm --filter @book-explorer/web     build
 
 # pnpm deploy: self-contained production directory, no pnpm symlinks
+# Note: pnpm deploy uses npm-pack rules (respects .gitignore) so build/ is excluded;
+# we copy it explicitly below.
 RUN pnpm deploy --filter @book-explorer/web --prod /prod/web
+RUN cp -r apps/web/build /prod/web/build
 
 # ── Runtime: minimal image ────────────────────────────────────────────────────
 FROM node:20-slim AS runner
