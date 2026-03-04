@@ -32,7 +32,10 @@ RUN pnpm --filter @book-explorer/db db:generate && \
 # pnpm deploy: creates a self-contained directory with all production deps
 # resolved to real files (no pnpm symlinks) — this is the officially recommended
 # approach for deploying a pnpm monorepo service to production.
+# Note: pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded;
+# we copy it explicitly below.
 RUN pnpm deploy --filter @book-explorer/api --prod /prod/api
+RUN cp -r apps/api/dist /prod/api/dist
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
