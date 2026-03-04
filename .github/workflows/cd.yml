@@ -61,36 +61,36 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  deploy:
-    name: Deploy to Railway
+  deploy-api:
+    name: Deploy API → Railway
     runs-on: ubuntu-latest
     needs: build-push
-
-    strategy:
-      matrix:
-        include:
-          - service: api
-            service_id_secret: RAILWAY_API_SERVICE_ID
-            image: ghcr.io/jarvis-jupiter/book-explorer-api
-          - service: web
-            service_id_secret: RAILWAY_WEB_SERVICE_ID
-            image: ghcr.io/jarvis-jupiter/book-explorer-web
-
     steps:
-      - name: Update Railway service image & redeploy
+      - name: Update image & redeploy
         run: |
-          # Update service source to the new image tag
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+          curl -sf https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation { serviceInstanceUpdate(serviceId: \"${{ secrets[matrix.service_id_secret] }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\", input: { source: { image: \"${{ matrix.image }}:${{ github.sha }}\" } }) }"
-            }'
+            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\", input: { source: { image: \"ghcr.io/jarvis-jupiter/book-explorer-api:${{ github.sha }}\" } }) }"}'
 
-          # Trigger redeploy
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+          curl -sf https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets[matrix.service_id_secret] }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"
-            }'
+            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
+
+  deploy-web:
+    name: Deploy Web → Railway
+    runs-on: ubuntu-latest
+    needs: build-push
+    steps:
+      - name: Update image & redeploy
+        run: |
+          curl -sf https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"${{ secrets.RAILWAY_WEB_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\", input: { source: { image: \"ghcr.io/jarvis-jupiter/book-explorer-web:${{ github.sha }}\" } }) }"}'
+
+          curl -sf https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_WEB_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
