@@ -11,6 +11,12 @@ const SearchBooksHttpQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(40).optional(),
 });
 
+const errorStatus = (kind: string): number => {
+  if (kind === "ValidationError") return 400;
+  if (kind === "ExternalServiceError") return 502;
+  return 500;
+};
+
 export const createBooksRouter = (searchBooksUseCase: SearchBooksUseCase): Router => {
   const router = Router();
 
@@ -32,13 +38,7 @@ export const createBooksRouter = (searchBooksUseCase: SearchBooksUseCase): Route
     });
 
     if (!result.ok) {
-      const status =
-        result.error.kind === "ValidationError"
-          ? 400
-          : result.error.kind === "ExternalServiceError"
-            ? 502
-            : 500;
-      res.status(status).json({ error: result.error.message });
+      res.status(errorStatus(result.error.kind)).json({ error: result.error.message });
       return;
     }
 
