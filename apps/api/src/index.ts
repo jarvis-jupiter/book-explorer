@@ -6,7 +6,8 @@ import { createAddBookmarkUseCase } from "./use-cases/add-bookmark.use-case.js";
 import { createRemoveBookmarkUseCase } from "./use-cases/remove-bookmark.use-case.js";
 import { createSearchBooksUseCase } from "./use-cases/search-books.use-case.js";
 
-const PORT = process.env["API_PORT"] ?? 3001;
+// Railway injects PORT; fallback to API_PORT for local dev, then 3001
+const PORT = process.env["PORT"] ?? process.env["API_PORT"] ?? 3001;
 
 const bookRepository = createGoogleBooksAdapter();
 const bookmarkRepository = createPrismaBookmarkAdapter(prisma);
