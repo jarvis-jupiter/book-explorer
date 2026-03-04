@@ -53,11 +53,13 @@ WORKDIR /prod/api
 # Copy the self-contained deployment from the build stage
 COPY --from=build --chown=nodeuser:nodejs /prod/api .
 
-# Prisma schema + migrations needed at startup for prisma migrate deploy
+# Prisma schema + migrations needed at startup (generate + migrate deploy)
 COPY --from=build --chown=nodeuser:nodejs /usr/src/app/packages/db/prisma ./prisma
+
+# Entrypoint: prisma generate → prisma migrate deploy → node dist/index.js
+COPY --chown=nodeuser:nodejs apps/api/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 USER nodeuser
 EXPOSE 3001
-# Note: set Railway's Pre-Deploy Command to:
-#   node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
-CMD ["node", "dist/index.js"]
+CMD ["./entrypoint.sh"]
