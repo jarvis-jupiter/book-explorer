@@ -18,6 +18,7 @@ COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_module
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
+# Generate Prisma client (writes to node_modules/.prisma/client/) then build all packages
 RUN pnpm --filter @book-explorer/db db:generate && \
     pnpm --filter @book-explorer/domain build && \
     pnpm --filter @book-explorer/db build && \
@@ -28,17 +29,21 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy root node_modules (shared deps)
+# Copy root node_modules (shared deps + Prisma binary)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy built workspace packages so Node ESM can resolve them
+# Explicitly copy the generated Prisma client — this is what actually runs at runtime
+# prisma generate writes to node_modules/.prisma/client/ which must match the OS/arch
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Copy built workspace packages
 COPY --from=builder /app/packages/domain/dist ./packages/domain/dist
 COPY --from=builder /app/packages/domain/package.json ./packages/domain/package.json
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
 
-# Copy Prisma schema + migrations for runtime migration
+# Copy Prisma schema + migrations (needed for prisma migrate deploy at startup)
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 
 # Copy built API
@@ -46,6 +51,10 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
+# Entrypoint: runs migrations then starts the server
+COPY apps/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["sh", "-c", "cd /app && npx prisma generate --schema packages/db/prisma/schema.prisma && node apps/api/dist/index.js"]
+CMD ["/entrypoint.sh"]
