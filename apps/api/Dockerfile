@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # ── Build: install all deps, generate Prisma client, compile TypeScript ────────
 FROM base AS build
-# openssl needed by prisma generate to detect the correct query engine binary
+# openssl needed for Prisma to detect the correct query engine platform
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /usr/src/app
@@ -26,30 +26,31 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # Copy source code
 COPY . .
 
-# Generate Prisma client, then compile all workspace packages
+# Generate Prisma client (in workspace), then compile all workspace packages
 RUN pnpm --filter @book-explorer/db db:generate && \
     pnpm --filter @book-explorer/domain build  && \
     pnpm --filter @book-explorer/db      build  && \
     pnpm --filter @book-explorer/api     build
 
-# pnpm deploy: creates a self-contained directory with all production deps
-# resolved to real files (no pnpm symlinks).
+# pnpm deploy: self-contained production directory with real files (no symlinks)
 RUN pnpm deploy --filter @book-explorer/api --prod /prod/api
 
 # Copy dist/ (excluded by pnpm deploy's npm-pack rules via .gitignore)
 RUN cp -r apps/api/dist /prod/api/dist
 
-# Copy Prisma schema + migrations so prisma generate can run inside /prod/api
+# Copy Prisma schema + migrations (needed for migrate deploy at runtime)
 RUN cp -r packages/db/prisma /prod/api/prisma
 
-# Run prisma generate INSIDE the deployment directory so the native query
-# engine binary lands in exactly the right path within /prod/api/node_modules.
-# This is the only reliable way — copying from workspace node_modules is fragile
-# because the pnpm flat path includes a hash of all peer dependencies.
-WORKDIR /prod/api
-RUN node_modules/.bin/prisma generate --schema prisma/schema.prisma
-
-WORKDIR /usr/src/app
+# Copy the generated Prisma client (.prisma/client/) from the workspace into
+# the deployment's node_modules. The pnpm flat path includes a hash of peer
+# deps so we find the target directory dynamically.
+RUN PRISMA_SRC=$(find node_modules/.pnpm -path "*/@prisma+client*/node_modules/.prisma/client" -type d | head -1) && \
+    PRISMA_DST=$(find /prod/api/node_modules/.pnpm -path "*/@prisma+client*/node_modules/@prisma/client" -type d | head -1) && \
+    echo "Copying generated Prisma client:" && \
+    echo "  from: $PRISMA_SRC" && \
+    echo "  to:   $(dirname $PRISMA_DST)/.prisma/client" && \
+    mkdir -p "$(dirname $PRISMA_DST)/.prisma/client" && \
+    cp -r "$PRISMA_SRC"/* "$(dirname $PRISMA_DST)/.prisma/client/"
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
@@ -65,14 +66,10 @@ RUN groupadd --system --gid 1001 nodejs && \
 
 WORKDIR /prod/api
 
-# Copy the fully-prepared deployment from the build stage:
-# - node_modules with all production deps (pnpm deploy)
-# - dist/ (compiled TypeScript)
-# - prisma/ (schema + migrations, needed for migrate deploy at startup)
-# - .prisma/client/ (generated query engine, created by prisma generate in build)
+# Copy the fully-prepared deployment from the build stage
 COPY --from=build --chown=nodeuser:nodejs /prod/api .
 
-# Entrypoint: prisma generate → prisma migrate deploy → node dist/index.js
+# Entrypoint: prisma migrate deploy → node dist/index.js
 COPY --chown=nodeuser:nodejs apps/api/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
