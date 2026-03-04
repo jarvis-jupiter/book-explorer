@@ -30,29 +30,29 @@ RUN pnpm --filter @book-explorer/db db:generate && \
     pnpm --filter @book-explorer/api     build
 
 # pnpm deploy: creates a self-contained directory with all production deps
-# resolved to real files (no pnpm symlinks) — this is the officially recommended
-# approach for deploying a pnpm monorepo service to production.
-# Note: pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded;
-# we copy it explicitly below.
+# resolved to real files (no pnpm symlinks).
 RUN pnpm deploy --filter @book-explorer/api --prod /prod/api
 
-# pnpm deploy uses npm-pack rules (respects .gitignore) so dist/ is excluded.
-# .prisma/client/ (generated runtime) is not in the pnpm store either.
-# Copy both explicitly from the build workspace.
-# The generated client must go into EVERY .prisma/client/ location that
-# @prisma/client might resolve from (both hoisted and within .pnpm).
-RUN cp -r apps/api/dist /prod/api/dist && \
-    for target in $(find /prod/api/node_modules -path "*/.prisma/client" -type d 2>/dev/null); do \
-      cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/* "$target/"; \
-    done && \
-    mkdir -p /prod/api/node_modules/.prisma/client && \
-    cp -r node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/* /prod/api/node_modules/.prisma/client/
+# Copy dist/ (excluded by pnpm deploy's npm-pack rules via .gitignore)
+RUN cp -r apps/api/dist /prod/api/dist
+
+# Copy Prisma schema + migrations so prisma generate can run inside /prod/api
+RUN cp -r packages/db/prisma /prod/api/prisma
+
+# Run prisma generate INSIDE the deployment directory so the native query
+# engine binary lands in exactly the right path within /prod/api/node_modules.
+# This is the only reliable way — copying from workspace node_modules is fragile
+# because the pnpm flat path includes a hash of all peer dependencies.
+WORKDIR /prod/api
+RUN node_modules/.bin/prisma generate --schema prisma/schema.prisma
+
+WORKDIR /usr/src/app
 
 # ── Runtime: minimal image with only what the app needs ───────────────────────
 FROM node:20-slim AS runner
 ENV NODE_ENV=production
 
-# Prisma needs openssl for query engine binaries
+# Prisma query engine needs openssl at runtime
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && \
     rm -rf /var/lib/apt/lists/*
 
@@ -62,11 +62,12 @@ RUN groupadd --system --gid 1001 nodejs && \
 
 WORKDIR /prod/api
 
-# Copy the self-contained deployment from the build stage
+# Copy the fully-prepared deployment from the build stage:
+# - node_modules with all production deps (pnpm deploy)
+# - dist/ (compiled TypeScript)
+# - prisma/ (schema + migrations, needed for migrate deploy at startup)
+# - .prisma/client/ (generated query engine, created by prisma generate in build)
 COPY --from=build --chown=nodeuser:nodejs /prod/api .
-
-# Prisma schema + migrations needed at startup (generate + migrate deploy)
-COPY --from=build --chown=nodeuser:nodejs /usr/src/app/packages/db/prisma ./prisma
 
 # Entrypoint: prisma generate → prisma migrate deploy → node dist/index.js
 COPY --chown=nodeuser:nodejs apps/api/entrypoint.sh ./entrypoint.sh
