@@ -32,16 +32,16 @@ ENV NODE_ENV=production
 # Copy root node_modules (shared deps + Prisma binary)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Explicitly copy the generated Prisma client — this is what actually runs at runtime
-# prisma generate writes to node_modules/.prisma/client/ which must match the OS/arch
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
 # Copy built workspace packages
 COPY --from=builder /app/packages/domain/dist ./packages/domain/dist
 COPY --from=builder /app/packages/domain/package.json ./packages/domain/package.json
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
+
+# Copy the generated Prisma client (output path defined in schema.prisma)
+# This is a predictable path that doesn't depend on pnpm store structure
+COPY --from=builder /app/packages/db/generated ./packages/db/generated
 
 # Copy Prisma schema + migrations (needed for prisma migrate deploy at startup)
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
