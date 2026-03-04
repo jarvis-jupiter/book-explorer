@@ -40,14 +40,6 @@
     }
   },
   "files": {
-    "ignore": [
-      "node_modules",
-      "dist",
-      "build",
-      ".turbo",
-      "coverage",
-      "*.tsbuildinfo",
-      "packages/db/generated"
-    ]
+    "ignore": ["node_modules", "dist", "build", ".turbo", "coverage", "*.tsbuildinfo"]
   }
 }
