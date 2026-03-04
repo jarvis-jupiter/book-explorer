@@ -54,9 +54,9 @@ export default defineConfig({
         PORT: "3000",
         API_BASE_URL: API_URL,
         NODE_ENV: "production",
-        // Clerk placeholder keys — pages requiring auth will redirect rather than error
-        CLERK_PUBLISHABLE_KEY: process.env["CLERK_PUBLISHABLE_KEY"] ?? "pk_test_placeholder",
-        CLERK_SECRET_KEY: process.env["CLERK_SECRET_KEY"] ?? "sk_test_placeholder",
+
+        CLERK_PUBLISHABLE_KEY: process.env["CLERK_PUBLISHABLE_KEY"] ?? "",
+        CLERK_SECRET_KEY: process.env["CLERK_SECRET_KEY"] ?? "",
       },
       timeout: 180_000,
     },
