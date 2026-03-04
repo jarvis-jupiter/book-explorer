@@ -41,6 +41,9 @@ COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
 # Copy Prisma schema + migrations for runtime migration
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 
+# Copy Prisma engine binaries for runtime
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
 # Copy built API
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
@@ -48,4 +51,4 @@ COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=/app/packages/db/prisma/schema.prisma && node dist/index.js"]
