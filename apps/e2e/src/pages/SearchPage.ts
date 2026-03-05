@@ -29,6 +29,12 @@ export class SearchPage {
   }
 
   getFirstBookmarkButton() {
-    return this.page.getByRole("button", { name: /bookmark/i }).first();
+    // aria-label is "Add to bookmarks" or "Already bookmarked"
+    return this.page.getByRole("button", { name: /bookmarks?/i }).first();
+  }
+
+  async waitForBookCards() {
+    // Wait for at least one list item to appear after results load
+    await this.page.getByRole("listitem").first().waitFor({ state: "visible", timeout: 15_000 });
   }
 }

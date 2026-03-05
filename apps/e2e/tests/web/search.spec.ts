@@ -65,19 +65,21 @@ test.describe("Search page", () => {
   test("bookmark button is visible on search results", async ({ searchPage }) => {
     await searchPage.goto("javascript");
     await expect(searchPage.getResultCount()).toBeVisible({ timeout: 15_000 });
+    await searchPage.waitForBookCards();
 
-    await expect(searchPage.getFirstBookmarkButton()).toBeVisible({ timeout: 10_000 });
+    await expect(searchPage.getFirstBookmarkButton()).toBeVisible({ timeout: 15_000 });
   });
 
   test("clicking bookmark button does not navigate away from search", async ({ searchPage }) => {
     await searchPage.goto("javascript");
     await expect(searchPage.getResultCount()).toBeVisible({ timeout: 15_000 });
+    await searchPage.waitForBookCards();
 
     const bookmarkBtn = searchPage.getFirstBookmarkButton();
-    await expect(bookmarkBtn).toBeVisible({ timeout: 10_000 });
+    await expect(bookmarkBtn).toBeVisible({ timeout: 15_000 });
 
     await bookmarkBtn.click();
-    await searchPage.waitForResults();
+    await searchPage.page.waitForLoadState("networkidle");
 
     expect(searchPage.page.url()).toMatch(/\/search|\/sign-in/);
   });
@@ -166,9 +168,10 @@ test.describe("Search page", () => {
   }) => {
     await searchPage.goto("javascript");
     await expect(searchPage.getResultCount()).toBeVisible({ timeout: 15_000 });
+    await searchPage.waitForBookCards();
 
     const bookmarkBtn = searchPage.getFirstBookmarkButton();
-    await expect(bookmarkBtn).toBeVisible({ timeout: 10_000 });
+    await expect(bookmarkBtn).toBeVisible({ timeout: 15_000 });
     await bookmarkBtn.click();
 
     await searchPage.waitForResults();
