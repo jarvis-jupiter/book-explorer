@@ -31,23 +31,27 @@ export const createApp = (deps: AppDependencies): Express => {
   // Gzip all responses
   app.use(compression());
 
-  // Rate limiters
-  const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
-  });
+  // Rate limiters — disabled in test/CI to prevent E2E flakiness
+  const isTest = process.env["NODE_ENV"] === "test" || process.env["CI"] === "true";
 
-  const searchLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-    message: { error: "Too many search requests", code: "RATE_LIMIT_EXCEEDED" },
-  });
+  if (!isTest) {
+    const globalLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
+    });
 
-  app.use(globalLimiter);
-  app.use("/api/books/search", searchLimiter);
+    const searchLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 30,
+      message: { error: "Too many search requests", code: "RATE_LIMIT_EXCEEDED" },
+    });
+
+    app.use(globalLimiter);
+    app.use("/api/books/search", searchLimiter);
+  }
 
   app.use(cors());
 
