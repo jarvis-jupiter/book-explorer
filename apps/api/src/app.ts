@@ -1,8 +1,11 @@
 import cors from "cors";
 import express, { type Express } from "express";
+import rateLimit from "express-rate-limit";
 import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
 import { createBooksRouter } from "./adapters/http/routes/books.router.js";
+import { createWebhooksRouter } from "./adapters/http/routes/webhooks.router.js";
 import type { BookmarkRepositoryPort } from "./ports/bookmark-repository.port.js";
+import type { UserRepositoryPort } from "./ports/user-repository.port.js";
 import type { AddBookmarkUseCase } from "./use-cases/add-bookmark.use-case.js";
 import type { RemoveBookmarkUseCase } from "./use-cases/remove-bookmark.use-case.js";
 import type { SearchBooksUseCase } from "./use-cases/search-books.use-case.js";
@@ -12,12 +15,35 @@ type AppDependencies = {
   readonly addBookmarkUseCase: AddBookmarkUseCase;
   readonly removeBookmarkUseCase: RemoveBookmarkUseCase;
   readonly bookmarkRepository: BookmarkRepositoryPort;
+  readonly userRepository: UserRepositoryPort;
 };
 
 export const createApp = (deps: AppDependencies): Express => {
   const app = express();
 
+  // Rate limiters
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
+  });
+
+  const searchLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: { error: "Too many search requests", code: "RATE_LIMIT_EXCEEDED" },
+  });
+
+  app.use(globalLimiter);
+  app.use("/api/books/search", searchLimiter);
+
   app.use(cors());
+
+  // Webhooks route uses raw body — must be mounted BEFORE express.json()
+  app.use("/api/webhooks", createWebhooksRouter(deps.userRepository));
+
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
@@ -31,6 +57,7 @@ export const createApp = (deps: AppDependencies): Express => {
       deps.addBookmarkUseCase,
       deps.removeBookmarkUseCase,
       deps.bookmarkRepository,
+      deps.userRepository,
     ),
   );
 

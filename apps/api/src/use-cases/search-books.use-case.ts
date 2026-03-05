@@ -20,6 +20,9 @@ export const createSearchBooksUseCase = (
       query: query.query.trim(),
       page: query.page ?? 1,
       pageSize: Math.min(query.pageSize ?? 10, 40),
+      sort: query.sort,
+      lang: query.lang,
+      filter: query.filter,
     };
 
     return bookRepository.search(trimmedQuery);

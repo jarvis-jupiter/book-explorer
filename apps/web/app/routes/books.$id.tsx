@@ -5,6 +5,7 @@ import {
   isRouteErrorResponse,
   useFetcher,
   useLoaderData,
+  useNavigation,
   useRouteError,
 } from "@remix-run/react";
 
@@ -31,9 +32,22 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return json({ book });
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => [
-  { title: `${data?.book?.title ?? "Book"} — Book Explorer` },
-];
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  const book = data?.book;
+  if (!book) return [{ title: "Book Not Found — Book Explorer" }];
+  return [
+    { title: `${book.title} — Book Explorer` },
+    {
+      name: "description",
+      content: book.description?.slice(0, 160) ?? `${book.title} by ${book.authors.join(", ")}`,
+    },
+    { property: "og:title", content: book.title },
+    { property: "og:description", content: book.description?.slice(0, 200) ?? "" },
+    { property: "og:image", content: book.coverUrl ?? "" },
+    { property: "og:type", content: "book" },
+    { property: "books:author", content: book.authors.join(", ") },
+  ];
+};
 
 export function ErrorBoundary() {
   const error = useRouteError();
@@ -57,9 +71,13 @@ export default function BookDetailPage() {
   const { book } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const isBookmarking = fetcher.state !== "idle";
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
+    <div
+      className={`max-w-4xl mx-auto px-6 py-12 transition-opacity duration-200 ${isLoading ? "opacity-50" : "opacity-100"}`}
+    >
       {/* Hero */}
       <div className="flex gap-8 items-start">
         {book.coverUrl ? (

@@ -35,6 +35,9 @@ export const SearchBooksQuerySchema = z.object({
   query: z.string().min(1, "Search query must not be empty"),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(40).optional(),
+  sort: z.enum(["relevance", "newest"]).optional(),
+  lang: z.string().optional(),
+  filter: z.enum(["all", "ebooks", "free-ebooks"]).optional(),
 });
 
 export type SearchBooksQuery = z.infer<typeof SearchBooksQuerySchema>;

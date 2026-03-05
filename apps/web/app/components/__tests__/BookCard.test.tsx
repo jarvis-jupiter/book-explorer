@@ -86,4 +86,32 @@ describe("BookCard", () => {
     expect(link).toBeDefined();
     expect((link as HTMLAnchorElement).href).toContain("/books/abc123");
   });
+
+  it("renders '✓ Bookmarked' button when isBookmarked is true", () => {
+    render(
+      <ul>
+        <BookCard {...baseProps} isBookmarked={true} />
+      </ul>,
+    );
+    expect(screen.getByRole("button", { name: /bookmarked/i })).toBeDefined();
+  });
+
+  it("disables the button when isBookmarked is true", () => {
+    render(
+      <ul>
+        <BookCard {...baseProps} isBookmarked={true} />
+      </ul>,
+    );
+    const btn = screen.getByRole("button", { name: /bookmarked/i });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("renders bookmark button (not bookmarked) when isBookmarked is false", () => {
+    render(
+      <ul>
+        <BookCard {...baseProps} isBookmarked={false} />
+      </ul>,
+    );
+    expect(screen.getByRole("button", { name: /bookmark/i })).toBeDefined();
+  });
 });
