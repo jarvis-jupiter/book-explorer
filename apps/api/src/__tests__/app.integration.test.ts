@@ -38,7 +38,16 @@ const makeApp = (
   };
 
   const userRepository = {
-    upsertByClerkId: vi.fn().mockResolvedValue({ ok: true, value: { id: "cuid_test", clerkId: "user_test", email: "t@t.com", displayName: null, createdAt: new Date() } }),
+    upsertByClerkId: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        id: "cuid_test",
+        clerkId: "user_test",
+        email: "t@t.com",
+        displayName: null,
+        createdAt: new Date(),
+      },
+    }),
     findByClerkId: vi.fn().mockResolvedValue({ ok: true, value: null }),
     deleteByClerkId: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
   };
