@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { SearchForm } from "../SearchForm.js";
 
 describe("SearchForm", () => {
@@ -14,18 +13,6 @@ describe("SearchForm", () => {
     render(<SearchForm defaultQuery="tolkien" />);
     const input = screen.getByRole("searchbox") as HTMLInputElement;
     expect(input.value).toBe("tolkien");
-  });
-
-  it("calls onSubmit with the query value when form is submitted", async () => {
-    const onSubmit = vi.fn();
-    render(<SearchForm onSubmit={onSubmit} />);
-
-    const input = screen.getByRole("searchbox");
-    await userEvent.clear(input);
-    await userEvent.type(input, "harry potter");
-    await userEvent.click(screen.getByRole("button", { name: /search/i }));
-
-    expect(onSubmit).toHaveBeenCalledWith("harry potter");
   });
 
   it("shows placeholder text", () => {

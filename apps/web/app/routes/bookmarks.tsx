@@ -1,7 +1,8 @@
 import { getAuth } from "@clerk/remix/ssr.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useLoaderData } from "@remix-run/react";
+import { Form, isRouteErrorResponse, useLoaderData, useRouteError } from "@remix-run/react";
+import { Link } from "@remix-run/react";
 
 export const meta: MetaFunction = () => [{ title: "My Bookmarks — Book Explorer" }];
 
@@ -64,52 +65,87 @@ export default function BookmarksPage() {
   const { bookmarks } = useLoaderData<typeof loader>();
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
-      <h1 className="text-3xl font-bold mb-6">My Bookmarks</h1>
+    <div>
+      <div className="bg-slate-900/50 border-b border-slate-800 py-12 px-8">
+        <h1 className="text-3xl font-bold text-slate-50 text-center">My Bookmarks</h1>
+      </div>
 
-      {bookmarks.length === 0 ? (
-        <div className="text-center mt-16 text-gray-500">
-          <p className="text-xl">No bookmarks yet.</p>
-          <p className="mt-2">Search for books and bookmark your favourites!</p>
-        </div>
-      ) : (
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {bookmarks.map((bookmark) => (
-            <li
-              key={bookmark.id}
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col gap-3"
+      <div className="py-8 px-8 max-w-7xl mx-auto">
+        {bookmarks.length === 0 ? (
+          <div className="text-center mt-24 space-y-4">
+            <p className="text-6xl">🔖</p>
+            <p className="text-2xl font-semibold text-slate-300">No bookmarks yet</p>
+            <p className="text-slate-500">Search for books and bookmark your favourites!</p>
+            <Link
+              to="/search"
+              className="inline-block mt-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all hover:scale-105"
             >
-              <div className="flex gap-4">
-                {bookmark.bookCoverUrl && (
-                  <img
-                    src={bookmark.bookCoverUrl}
-                    alt={`Cover of ${bookmark.bookTitle}`}
-                    className="h-28 w-20 rounded object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex flex-col gap-1 min-w-0">
-                  <h2 className="font-semibold text-gray-900 truncate">{bookmark.bookTitle}</h2>
-                  {bookmark.bookAuthors.length > 0 && (
-                    <p className="text-sm text-gray-500 truncate">
-                      {bookmark.bookAuthors.join(", ")}
-                    </p>
+              Find Books
+            </Link>
+          </div>
+        ) : (
+          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {bookmarks.map((bookmark) => (
+              <li
+                key={bookmark.id}
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-amber-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5 flex flex-col gap-3"
+              >
+                <div className="flex gap-4">
+                  {bookmark.bookCoverUrl ? (
+                    <img
+                      src={bookmark.bookCoverUrl}
+                      alt={`Cover of ${bookmark.bookTitle}`}
+                      className="rounded-lg h-32 w-24 object-cover flex-shrink-0 shadow-md"
+                    />
+                  ) : (
+                    <div className="bg-slate-800 rounded-lg h-32 w-24 flex items-center justify-center text-3xl flex-shrink-0">
+                      📖
+                    </div>
                   )}
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <h2 className="font-semibold text-slate-100 line-clamp-2">
+                      {bookmark.bookTitle}
+                    </h2>
+                    {bookmark.bookAuthors.length > 0 && (
+                      <p className="text-sm text-amber-400/80 truncate">
+                        {bookmark.bookAuthors.join(", ")}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <Form method="post">
-                <input type="hidden" name="intent" value="remove" />
-                <input type="hidden" name="bookmarkId" value={bookmark.id} />
-                <button
-                  type="submit"
-                  className="w-full rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Remove
-                </button>
-              </Form>
-            </li>
-          ))}
-        </ul>
-      )}
+                <Form method="post">
+                  <input type="hidden" name="intent" value="remove" />
+                  <input type="hidden" name="bookmarkId" value={bookmark.id} />
+                  <button
+                    type="submit"
+                    className="text-slate-500 hover:text-red-400 text-xs border border-slate-700 hover:border-red-500/50 rounded-lg px-3 py-1.5 transition-all w-full mt-2"
+                  >
+                    Remove
+                  </button>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="text-center space-y-4">
+        <p className="text-5xl">⚠️</p>
+        <h1 className="text-2xl font-bold text-amber-400">
+          {isRouteErrorResponse(error)
+            ? `${error.status} — ${error.statusText}`
+            : "Bookmarks Error"}
+        </h1>
+        <p className="text-slate-400">Something went wrong loading your bookmarks.</p>
+      </div>
     </div>
   );
 }

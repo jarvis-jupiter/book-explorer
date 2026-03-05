@@ -1,32 +1,26 @@
+import { Form } from "@remix-run/react";
+
 type SearchFormProps = {
   readonly defaultQuery?: string;
-  readonly onSubmit?: (query: string) => void;
 };
 
-export function SearchForm({ defaultQuery = "", onSubmit }: SearchFormProps) {
+export function SearchForm({ defaultQuery = "" }: SearchFormProps) {
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const data = new FormData(e.currentTarget);
-        onSubmit?.(String(data.get("q") ?? ""));
-      }}
-      className="flex gap-3 mb-8"
-    >
+    <Form method="get" action="/search" className="flex gap-3 w-full max-w-2xl mx-auto">
       <input
         type="search"
         name="q"
         defaultValue={defaultQuery}
         placeholder="Search by title, author, or keyword…"
-        className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex-1 bg-slate-800 border border-slate-700 focus:border-amber-500/50 rounded-xl px-5 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-base transition-colors"
         aria-label="Search query"
       />
       <button
         type="submit"
-        className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700"
+        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all hover:scale-105 whitespace-nowrap"
       >
         Search
       </button>
-    </form>
+    </Form>
   );
 }

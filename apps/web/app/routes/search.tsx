@@ -1,6 +1,13 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Form, useLoaderData, useNavigation } from "@remix-run/react";
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useNavigation,
+  useRouteError,
+} from "@remix-run/react";
+import { BookCard } from "../components/BookCard.js";
+import { SearchForm } from "../components/SearchForm.js";
 
 export const meta: MetaFunction = () => [{ title: "Search Books — Book Explorer" }];
 
@@ -46,71 +53,86 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function SearchPage() {
-  // biome-ignore lint/correctness/noUnusedVariables: totalItems is used in JSX below
-  const { books, query, totalItems, page } = useLoaderData<typeof loader>();
+  const { books, query, totalItems } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSearching = navigation.state === "loading";
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
-      <h1 className="text-3xl font-bold mb-6">Search Books</h1>
+    <div>
+      <div className="bg-slate-900/50 border-b border-slate-800 py-12 px-8">
+        <h1 className="text-3xl font-bold text-slate-50 text-center mb-6">Search Books</h1>
+        <SearchForm defaultQuery={query} />
+      </div>
 
-      <Form method="get" className="flex gap-3 mb-8">
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by title, author, or keyword…"
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Search query"
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700"
-        >
-          Search
-        </button>
-      </Form>
+      <div className="py-8 px-8 max-w-7xl mx-auto">
+        {isSearching && (
+          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {["s1", "s2", "s3", "s4", "s5", "s6"].map((key) => (
+              <li
+                key={key}
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-4 animate-pulse"
+              >
+                <div className="bg-slate-800 rounded-lg h-32 w-24 flex-shrink-0" />
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="h-4 bg-slate-800 rounded w-3/4" />
+                  <div className="h-3 bg-slate-800 rounded w-1/2" />
+                  <div className="h-3 bg-slate-800 rounded w-1/3" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {isSearching && <p className="text-gray-500">Searching…</p>}
+        {!isSearching && query && (
+          <p className="mb-4 text-slate-400">
+            <span className="text-amber-400 font-semibold">{totalItems}</span> result
+            {totalItems !== 1 ? "s" : ""} for{" "}
+            <strong className="text-slate-200">&ldquo;{query}&rdquo;</strong>
+          </p>
+        )}
 
-      {!isSearching && query && (
-        <p className="mb-4 text-gray-600">
-          {totalItems} result{totalItems !== 1 ? "s" : ""} for{" "}
-          <strong>&ldquo;{query}&rdquo;</strong>
-        </p>
-      )}
+        {!isSearching && (
+          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {books.map((book) => (
+              <BookCard key={book.id} {...book} />
+            ))}
+          </ul>
+        )}
 
-      <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {books.map((book) => (
-          <li
-            key={book.id}
-            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex gap-4"
-          >
-            {book.coverUrl && (
-              <img
-                src={book.coverUrl}
-                alt={`Cover of ${book.title}`}
-                className="h-28 w-20 rounded object-cover flex-shrink-0"
-              />
-            )}
-            <div className="flex flex-col gap-1 min-w-0">
-              <h2 className="font-semibold text-gray-900 truncate">{book.title}</h2>
-              {book.authors.length > 0 && (
-                <p className="text-sm text-gray-500 truncate">{book.authors.join(", ")}</p>
-              )}
-              {book.publisher && <p className="text-xs text-gray-400">{book.publisher}</p>}
-              {book.description && (
-                <p className="text-xs text-gray-600 mt-1 line-clamp-3">{book.description}</p>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+        {!isSearching && books.length === 0 && query && (
+          <div className="text-center mt-24 space-y-4">
+            <p className="text-6xl">📚</p>
+            <p className="text-2xl font-semibold text-slate-300">No books found</p>
+            <p className="text-slate-500">Try a different search term or check your spelling.</p>
+          </div>
+        )}
 
-      {books.length === 0 && query && !isSearching && (
-        <p className="text-center text-gray-500 mt-12">No books found. Try a different search.</p>
-      )}
+        {!isSearching && !query && (
+          <div className="text-center mt-24 space-y-4">
+            <p className="text-6xl">🔍</p>
+            <p className="text-2xl font-semibold text-slate-300">Search for books</p>
+            <p className="text-slate-500">
+              Enter a title, author, or keyword above to get started.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="text-center space-y-4">
+        <p className="text-5xl">⚠️</p>
+        <h1 className="text-2xl font-bold text-amber-400">
+          {isRouteErrorResponse(error) ? `${error.status} — ${error.statusText}` : "Search Error"}
+        </h1>
+        <p className="text-slate-400">Something went wrong loading search results.</p>
+      </div>
     </div>
   );
 }
