@@ -72,15 +72,17 @@ jobs:
     steps:
       - name: Update image & redeploy
         run: |
+          # 1. Update the image source
           curl -sf https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\", input: { source: { image: \"ghcr.io/jarvis-jupiter/book-explorer-api-v2:${{ github.sha }}\" } }) }"}'
 
+          # 2. Trigger a NEW deployment (pulls fresh image) — not redeploy (which reuses existing container)
           curl -sf https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
+            -d '{"query":"mutation { serviceInstanceDeployV2(serviceId: \"${{ secrets.RAILWAY_API_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
 
   deploy-web:
     name: Deploy Web → Railway
@@ -97,5 +99,5 @@ jobs:
           curl -sf https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"${{ secrets.RAILWAY_WEB_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
+            -d '{"query":"mutation { serviceInstanceDeployV2(serviceId: \"${{ secrets.RAILWAY_WEB_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENV_ID }}\") }"}'
 # Wed Mar  4 21:23:57 UTC 2026
