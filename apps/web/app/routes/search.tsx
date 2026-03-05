@@ -77,7 +77,6 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 export async function loader(args: LoaderFunctionArgs) {
-  const { userId, getToken } = await getAuth(args);
   const { request } = args;
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? "";
@@ -86,8 +85,16 @@ export async function loader(args: LoaderFunctionArgs) {
   const lang = url.searchParams.get("lang") ?? "";
   const filter = url.searchParams.get("filter") ?? "all";
 
-  // Fetch existing bookmarks when authenticated
-  const bookmarkedIds = userId ? await fetchBookmarkedIds((await getToken()) ?? "") : [];
+  // Fetch existing bookmarks when authenticated (graceful — no Clerk = no bookmarks)
+  let bookmarkedIds: string[] = [];
+  try {
+    const { userId, getToken } = await getAuth(args);
+    if (userId) {
+      bookmarkedIds = await fetchBookmarkedIds((await getToken()) ?? "");
+    }
+  } catch {
+    // Clerk not configured or auth failed — continue without bookmarks
+  }
 
   if (!query) {
     return json<LoaderData>({
