@@ -33,19 +33,19 @@ export const createWebhooksRouter = (userRepository: UserRepositoryPort): Router
     "/clerk",
     express.raw({ type: "application/json" }),
     async (req: Request, res: Response): Promise<void> => {
-      const secret = process.env["CLERK_WEBHOOK_SECRET"];
-
-      if (!secret) {
-        errorResponse(res, 500, "CONFIGURATION_ERROR", "Webhook secret not configured");
-        return;
-      }
-
       const svixId = req.headers["svix-id"];
       const svixTimestamp = req.headers["svix-timestamp"];
       const svixSignature = req.headers["svix-signature"];
 
       if (!svixId || !svixTimestamp || !svixSignature) {
         errorResponse(res, 400, "BAD_REQUEST", "Missing svix headers");
+        return;
+      }
+
+      const secret = process.env["CLERK_WEBHOOK_SECRET"];
+
+      if (!secret) {
+        errorResponse(res, 500, "CONFIGURATION_ERROR", "Webhook secret not configured");
         return;
       }
 
