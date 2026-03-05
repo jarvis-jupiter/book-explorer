@@ -74,6 +74,30 @@ test.describe("Search page", () => {
     await expect(noResults.or(resultCount).first()).toBeVisible({ timeout: 15_000 });
   });
 
+  test("bookmark button is visible on search results", async ({ page }) => {
+    await page.goto("/search?q=javascript");
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
+
+    // Bookmark buttons should be visible in results
+    const bookmarkBtn = page.getByRole("button", { name: /bookmark/i }).first();
+    await expect(bookmarkBtn).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("clicking bookmark button does not navigate away from search", async ({ page }) => {
+    await page.goto("/search?q=javascript");
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
+
+    const bookmarkBtn = page.getByRole("button", { name: /bookmark/i }).first();
+    await expect(bookmarkBtn).toBeVisible({ timeout: 10_000 });
+
+    // Click it — unauthenticated users will be redirected to /sign-in or stay on /search
+    await bookmarkBtn.click();
+    await page.waitForLoadState("networkidle");
+
+    // Should still be on search or sign-in, not on a random page
+    expect(page.url()).toMatch(/\/search|\/sign-in/);
+  });
+
   test("navigating back to /search clears query and shows prompt", async ({ page }) => {
     await page.goto("/search?q=tolkien");
     await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });

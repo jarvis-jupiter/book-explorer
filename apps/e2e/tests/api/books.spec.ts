@@ -65,3 +65,26 @@ test.describe("GET /api/books/search", () => {
     }
   });
 });
+
+test.describe("GET /api/books/:id", () => {
+  test("returns 200 with book shape for a valid id", async ({ request }) => {
+    // Search first to get a real book id
+    const searchRes = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "clean code" },
+    });
+    expect(searchRes.status()).toBe(200);
+    const searchBody = await searchRes.json();
+    const firstBook = searchBody.books[0];
+    if (!firstBook) return;
+
+    const res = await request.get(`${API_URL}/api/books/${firstBook.id}`);
+    expect(res.status()).toBe(200);
+
+    const body = await res.json();
+    expect(body).toHaveProperty("id", firstBook.id);
+    expect(body).toHaveProperty("title");
+    expect(typeof body.title).toBe("string");
+    expect(body).toHaveProperty("authors");
+    expect(Array.isArray(body.authors)).toBe(true);
+  });
+});

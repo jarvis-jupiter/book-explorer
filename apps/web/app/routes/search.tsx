@@ -1,6 +1,8 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { getAuth } from "@clerk/remix/ssr.server";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import {
+  Link,
   isRouteErrorResponse,
   useLoaderData,
   useNavigation,
@@ -10,6 +12,8 @@ import { BookCard } from "../components/BookCard.js";
 import { SearchForm } from "../components/SearchForm.js";
 
 export const meta: MetaFunction = () => [{ title: "Search Books — Book Explorer" }];
+
+const PAGE_SIZE = 10;
 
 type Book = {
   id: string;
@@ -25,7 +29,34 @@ type LoaderData = {
   query: string;
   totalItems: number;
   page: number;
+  pageSize: number;
 };
+
+export async function action(args: ActionFunctionArgs) {
+  const { userId, getToken } = await getAuth(args);
+  if (!userId) return redirect("/sign-in");
+
+  const formData = await args.request.formData();
+  const intent = formData.get("intent");
+
+  if (intent === "bookmark") {
+    const token = await getToken();
+    await fetch(`${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/bookmarks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token ?? ""}`,
+      },
+      body: JSON.stringify({
+        bookId: formData.get("bookId"),
+        bookTitle: formData.get("bookTitle"),
+        bookCoverUrl: formData.get("bookCoverUrl") || null,
+        bookAuthors: JSON.parse(String(formData.get("bookAuthors") ?? "[]")),
+      }),
+    });
+  }
+  return null;
+}
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -33,7 +64,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const page = Number(url.searchParams.get("page") ?? "1");
 
   if (!query) {
-    return json<LoaderData>({ books: [], query: "", totalItems: 0, page: 1 });
+    return json<LoaderData>({ books: [], query: "", totalItems: 0, page: 1, pageSize: PAGE_SIZE });
   }
 
   const apiUrl = new URL(
@@ -45,17 +76,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const response = await fetch(apiUrl.toString());
 
   if (!response.ok) {
-    return json<LoaderData>({ books: [], query, totalItems: 0, page });
+    return json<LoaderData>({ books: [], query, totalItems: 0, page, pageSize: PAGE_SIZE });
   }
 
   const data = (await response.json()) as { books: Book[]; totalItems: number; page: number };
-  return json<LoaderData>({ books: data.books, query, totalItems: data.totalItems, page });
+  return json<LoaderData>({
+    books: data.books,
+    query,
+    totalItems: data.totalItems,
+    page,
+    pageSize: PAGE_SIZE,
+  });
 }
 
 export default function SearchPage() {
-  const { books, query, totalItems } = useLoaderData<typeof loader>();
+  const { books, query, totalItems, page, pageSize } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSearching = navigation.state === "loading";
+  const totalPages = Math.ceil(totalItems / pageSize);
 
   return (
     <div>
@@ -114,6 +152,30 @@ export default function SearchPage() {
             <p className="text-slate-500">
               Enter a title, author, or keyword above to get started.
             </p>
+          </div>
+        )}
+
+        {!isSearching && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-12">
+            {page > 1 && (
+              <Link
+                to={`/search?q=${encodeURIComponent(query)}&page=${page - 1}`}
+                className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              >
+                ← Previous
+              </Link>
+            )}
+            <span className="text-slate-500 text-sm">
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                to={`/search?q=${encodeURIComponent(query)}&page=${page + 1}`}
+                className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:border-amber-500/50 hover:text-amber-400 transition-all"
+              >
+                Next →
+              </Link>
+            )}
           </div>
         )}
       </div>
