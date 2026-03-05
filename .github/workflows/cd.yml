@@ -20,6 +20,7 @@ jobs:
   build-push:
     name: Build & push images to GHCR
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: ci-check
     permissions:
       contents: read

@@ -1,6 +1,10 @@
+import compression from "compression";
 import cors from "cors";
 import express, { type Express } from "express";
+import type { ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import "express-async-errors";
 import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
 import { createBooksRouter } from "./adapters/http/routes/books.router.js";
 import { createWebhooksRouter } from "./adapters/http/routes/webhooks.router.js";
@@ -20,6 +24,12 @@ type AppDependencies = {
 
 export const createApp = (deps: AppDependencies): Express => {
   const app = express();
+
+  // Security headers
+  app.use(helmet());
+
+  // Gzip all responses
+  app.use(compression());
 
   // Rate limiters
   const globalLimiter = rateLimit({
@@ -60,6 +70,18 @@ export const createApp = (deps: AppDependencies): Express => {
       deps.userRepository,
     ),
   );
+
+  // Centralised error handler — must be last middleware (4-argument signature)
+  const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+    const isDev = process.env["NODE_ENV"] !== "production";
+    const status = (err as { status?: number }).status ?? 500;
+    res.status(status).json({
+      error: isDev ? String((err as Error).message) : "Internal server error",
+      code: "INTERNAL_ERROR",
+      ...(isDev && { stack: String((err as Error).stack) }),
+    });
+  };
+  app.use(errorHandler);
 
   return app;
 };

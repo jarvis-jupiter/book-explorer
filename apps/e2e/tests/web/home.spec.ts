@@ -1,60 +1,54 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../src/fixtures/index.js";
 
 test.describe("Home page", () => {
-  test("loads and displays the hero heading", async ({ page }) => {
-    await page.goto("/");
+  test("loads and displays the hero heading", async ({ homePage }) => {
+    await homePage.goto();
 
-    await expect(page).toHaveTitle("Book Explorer");
-    // Heading is plain text "Book Explorer" (emoji lives in the nav logo, not the h1)
-    await expect(page.getByRole("heading", { name: /book explorer/i })).toBeVisible();
+    await expect(homePage.page).toHaveTitle("Book Explorer");
+    await expect(homePage.getTitle()).toBeVisible();
   });
 
-  test("displays the hero subtext", async ({ page }) => {
-    await page.goto("/");
+  test("displays the hero subtext", async ({ homePage }) => {
+    await homePage.goto();
 
-    await expect(page.getByText(/discover.*search.*bookmark/i)).toBeVisible();
+    await expect(homePage.page.getByText(/discover.*search.*bookmark/i)).toBeVisible();
   });
 
-  test("displays the stats row", async ({ page }) => {
-    await page.goto("/");
+  test("displays the stats row", async ({ homePage }) => {
+    await homePage.goto();
 
-    await expect(page.getByText(/1M\+ Books/)).toBeVisible();
-    await expect(page.getByText(/Google Books Powered/)).toBeVisible();
-    await expect(page.getByText(/Free Forever/)).toBeVisible();
+    await expect(homePage.page.getByText(/1M\+ Books/)).toBeVisible();
+    await expect(homePage.page.getByText(/Google Books Powered/)).toBeVisible();
+    await expect(homePage.page.getByText(/Free Forever/)).toBeVisible();
   });
 
-  test("has a working 'Search Books' link", async ({ page }) => {
-    await page.goto("/");
+  test("has a working 'Search Books' link", async ({ homePage }) => {
+    await homePage.goto();
+    await homePage.clickSearchBooks();
 
-    await page.getByRole("link", { name: /search books/i }).click();
-
-    await expect(page).toHaveURL(/\/search/);
-    await expect(page.getByRole("heading", { name: /search books/i })).toBeVisible();
+    await expect(homePage.page).toHaveURL(/\/search/);
+    await expect(homePage.page.getByRole("heading", { name: /search books/i })).toBeVisible();
   });
 
-  test("has a working 'My Bookmarks' link", async ({ page }) => {
-    await page.goto("/");
+  test("has a working 'My Bookmarks' link", async ({ homePage }) => {
+    await homePage.goto();
+    await homePage.clickMyBookmarks();
 
-    await page.getByRole("link", { name: /my bookmarks/i }).click();
-
-    // Bookmarks requires auth — unauthenticated users get redirected
-    // (to /sign-in, /bookmarks with empty state, or / depending on Clerk config)
-    await page.waitForLoadState("networkidle");
-    const url = page.url();
+    await homePage.page.waitForLoadState("networkidle");
+    const url = homePage.page.url();
     expect(url).toMatch(/\/bookmarks|\/sign-in|\/$/);
   });
 
-  test("nav contains Search and Bookmarks links", async ({ page }) => {
-    await page.goto("/");
+  test("nav contains Search and Bookmarks links", async ({ homePage }) => {
+    await homePage.goto();
 
-    const nav = page.getByRole("navigation");
-    await expect(nav.getByRole("link", { name: /^search$/i })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /^bookmarks$/i })).toBeVisible();
+    await expect(homePage.getNavLink(/^search$/i)).toBeVisible();
+    await expect(homePage.getNavLink(/^bookmarks$/i)).toBeVisible();
   });
 
-  test("nav has a Sign In button when unauthenticated", async ({ page }) => {
-    await page.goto("/");
+  test("nav has a Sign In button when unauthenticated", async ({ homePage }) => {
+    await homePage.goto();
 
-    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
+    await expect(homePage.page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
 });

@@ -6,10 +6,14 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: Biome · Type Check · Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -64,6 +68,7 @@ jobs:
   e2e:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: ci
 
     env:

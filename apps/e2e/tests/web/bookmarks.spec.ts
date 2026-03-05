@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../src/fixtures/index.js";
 
 test.describe("Bookmarks page (unauthenticated)", () => {
   test("redirects or blocks unauthenticated users", async ({ page }) => {

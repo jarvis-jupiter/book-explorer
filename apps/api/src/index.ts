@@ -8,7 +8,7 @@ import { createRemoveBookmarkUseCase } from "./use-cases/remove-bookmark.use-cas
 import { createSearchBooksUseCase } from "./use-cases/search-books.use-case.js";
 
 // Railway injects PORT; fallback to API_PORT for local dev, then 3001
-const PORT = process.env["PORT"] ?? process.env["API_PORT"] ?? 3001;
+const port = process.env["PORT"] ?? process.env["API_PORT"] ?? 3001;
 
 const bookRepository = createGoogleBooksAdapter();
 const bookmarkRepository = createPrismaBookmarkAdapter(prisma);
@@ -26,4 +26,19 @@ const app = createApp({
   userRepository,
 });
 
-app.listen(PORT, () => {});
+const server = app.listen(port, () => {
+  // biome-ignore lint/suspicious/noConsole: startup log is appropriate here
+  console.log(`API listening on port ${port}`);
+});
+
+const shutdown = () => {
+  server.close(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+  // Force exit if graceful shutdown takes too long
+  setTimeout(() => process.exit(1), 10_000);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
