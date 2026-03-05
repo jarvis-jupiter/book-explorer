@@ -67,6 +67,12 @@ function Nav() {
       </div>
       <div className="flex items-center gap-3">
         <SignedOut>
+          <Link
+            to="/sign-up"
+            className="text-sm text-slate-400 hover:text-slate-100 transition-colors"
+          >
+            Sign Up
+          </Link>
           <SignInButton mode="modal">
             <button
               type="button"

@@ -45,5 +45,44 @@ export const createBooksRouter = (searchBooksUseCase: SearchBooksUseCase): Route
     res.json(result.value);
   });
 
+  router.get("/:id", async (req: Request, res: Response): Promise<void> => {
+    const id = String(req.params["id"] ?? "");
+    const apiKey = process.env["GOOGLE_BOOKS_API_KEY"] ?? "";
+    const url = `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}?key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      res.status(404).json({ error: "Book not found" });
+      return;
+    }
+    const data = (await response.json()) as {
+      id: string;
+      volumeInfo?: {
+        title?: string;
+        authors?: string[];
+        publisher?: string;
+        description?: string;
+        imageLinks?: { thumbnail?: string };
+        publishedDate?: string;
+        pageCount?: number;
+        categories?: string[];
+        averageRating?: number;
+      };
+    };
+    const info = data.volumeInfo ?? {};
+    const book = {
+      id: data.id,
+      title: info.title ?? "Unknown",
+      authors: info.authors ?? [],
+      publisher: info.publisher ?? null,
+      description: info.description ?? null,
+      coverUrl: info.imageLinks?.thumbnail?.replace("http:", "https:") ?? null,
+      publishedDate: info.publishedDate ?? null,
+      pageCount: info.pageCount ?? null,
+      categories: info.categories ?? [],
+      averageRating: info.averageRating ?? null,
+    };
+    res.json(book);
+  });
+
   return router;
 };

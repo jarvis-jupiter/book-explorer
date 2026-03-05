@@ -24,5 +24,17 @@ vi.mock("@remix-run/react", async (importOriginal) => {
         {children}
       </a>
     ),
+    useFetcher: () => ({
+      state: "idle" as const,
+      Form: ({
+        children,
+        ...props
+      }: React.FormHTMLAttributes<HTMLFormElement> & { children?: React.ReactNode }) => (
+        <form {...props}>{children}</form>
+      ),
+      submit: vi.fn(),
+      load: vi.fn(),
+      data: undefined,
+    }),
   };
 });

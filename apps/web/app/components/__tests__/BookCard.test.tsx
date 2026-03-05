@@ -66,4 +66,24 @@ describe("BookCard", () => {
     const img = screen.getByRole("img");
     expect(img).toBeDefined();
   });
+
+  it("renders bookmark button", () => {
+    render(
+      <ul>
+        <BookCard {...baseProps} />
+      </ul>,
+    );
+    expect(screen.getByRole("button", { name: /bookmark/i })).toBeDefined();
+  });
+
+  it("title links to book detail page", () => {
+    render(
+      <ul>
+        <BookCard {...baseProps} />
+      </ul>,
+    );
+    const link = screen.getByRole("link", { name: /harry potter/i });
+    expect(link).toBeDefined();
+    expect((link as HTMLAnchorElement).href).toContain("/books/abc123");
+  });
 });
