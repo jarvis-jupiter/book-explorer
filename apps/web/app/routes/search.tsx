@@ -2,6 +2,7 @@ import { getAuth } from "@clerk/remix/ssr.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import {
+  Form,
   Link,
   isRouteErrorResponse,
   useLoaderData,
@@ -9,11 +10,11 @@ import {
   useRouteError,
 } from "@remix-run/react";
 import { BookCard } from "../components/BookCard.js";
-import { SearchForm } from "../components/SearchForm.js";
 
 export const meta: MetaFunction = () => [{ title: "Search Books — Book Explorer" }];
 
 const PAGE_SIZE = 10;
+const API_BASE_URL = process.env["API_BASE_URL"] ?? "http://localhost:3001";
 
 type Book = {
   id: string;
@@ -30,18 +31,27 @@ type LoaderData = {
   totalItems: number;
   page: number;
   pageSize: number;
+  bookmarkedIds: string[];
+  sort: string;
+  lang: string;
+  filter: string;
 };
 
 export async function action(args: ActionFunctionArgs) {
   const { userId, getToken } = await getAuth(args);
-  if (!userId) return redirect("/sign-in");
+
+  if (!userId) {
+    const url = new URL(args.request.url);
+    const returnUrl = url.pathname + url.search;
+    return redirect(`/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
+  }
 
   const formData = await args.request.formData();
   const intent = formData.get("intent");
 
   if (intent === "bookmark") {
     const token = await getToken();
-    await fetch(`${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/bookmarks`, {
+    const res = await fetch(`${API_BASE_URL}/api/bookmarks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -54,29 +64,66 @@ export async function action(args: ActionFunctionArgs) {
         bookAuthors: JSON.parse(String(formData.get("bookAuthors") ?? "[]")),
       }),
     });
+
+    if (res.status === 409) {
+      return json({ error: "already_bookmarked" });
+    }
+
+    if (res.status === 201) {
+      return json({ success: true });
+    }
   }
   return null;
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader(args: LoaderFunctionArgs) {
+  const { userId, getToken } = await getAuth(args);
+  const { request } = args;
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? "";
   const page = Number(url.searchParams.get("page") ?? "1");
+  const sort = url.searchParams.get("sort") ?? "relevance";
+  const lang = url.searchParams.get("lang") ?? "";
+  const filter = url.searchParams.get("filter") ?? "all";
+
+  // Fetch existing bookmarks when authenticated
+  const bookmarkedIds = userId ? await fetchBookmarkedIds((await getToken()) ?? "") : [];
 
   if (!query) {
-    return json<LoaderData>({ books: [], query: "", totalItems: 0, page: 1, pageSize: PAGE_SIZE });
+    return json<LoaderData>({
+      books: [],
+      query: "",
+      totalItems: 0,
+      page: 1,
+      pageSize: PAGE_SIZE,
+      bookmarkedIds,
+      sort,
+      lang,
+      filter,
+    });
   }
 
-  const apiUrl = new URL(
-    `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/search`,
-  );
+  const apiUrl = new URL(`${API_BASE_URL}/api/books/search`);
   apiUrl.searchParams.set("q", query);
   apiUrl.searchParams.set("page", String(page));
+  if (sort && sort !== "relevance") apiUrl.searchParams.set("sort", sort);
+  if (lang) apiUrl.searchParams.set("lang", lang);
+  if (filter && filter !== "all") apiUrl.searchParams.set("filter", filter);
 
   const response = await fetch(apiUrl.toString());
 
   if (!response.ok) {
-    return json<LoaderData>({ books: [], query, totalItems: 0, page, pageSize: PAGE_SIZE });
+    return json<LoaderData>({
+      books: [],
+      query,
+      totalItems: 0,
+      page,
+      pageSize: PAGE_SIZE,
+      bookmarkedIds,
+      sort,
+      lang,
+      filter,
+    });
   }
 
   const data = (await response.json()) as { books: Book[]; totalItems: number; page: number };
@@ -86,11 +133,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
     totalItems: data.totalItems,
     page,
     pageSize: PAGE_SIZE,
+    bookmarkedIds,
+    sort,
+    lang,
+    filter,
   });
 }
 
+const fetchBookmarkedIds = async (token: string): Promise<string[]> => {
+  const bmRes = await fetch(`${API_BASE_URL}/api/bookmarks`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!bmRes.ok) return [];
+  const bms = (await bmRes.json()) as Array<{ bookId: string }>;
+  return bms.map((b) => b.bookId);
+};
+
+const selectClass =
+  "bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 text-sm focus:outline-none focus:border-amber-500/50";
+
 export default function SearchPage() {
-  const { books, query, totalItems, page, pageSize } = useLoaderData<typeof loader>();
+  const { books, query, totalItems, page, pageSize, bookmarkedIds, sort, lang, filter } =
+    useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSearching = navigation.state === "loading";
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -99,7 +163,57 @@ export default function SearchPage() {
     <div>
       <div className="bg-slate-900/50 border-b border-slate-800 py-12 px-8">
         <h1 className="text-3xl font-bold text-slate-50 text-center mb-6">Search Books</h1>
-        <SearchForm defaultQuery={query} />
+        <Form method="get" action="/search">
+          <div className="flex gap-3 w-full max-w-2xl mx-auto">
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Search by title, author, or keyword…"
+              className="flex-1 bg-slate-800 border border-slate-700 focus:border-amber-500/50 rounded-xl px-5 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-base transition-colors"
+              aria-label="Search query"
+            />
+            <button
+              type="submit"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all hover:scale-105 whitespace-nowrap"
+            >
+              Search
+            </button>
+          </div>
+          <details className="mt-4 w-full max-w-2xl mx-auto">
+            <summary className="text-sm text-slate-500 cursor-pointer hover:text-slate-300 transition-colors">
+              Filters ▾
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+              <label className="flex flex-col gap-1 text-xs text-slate-400">
+                Sort by
+                <select name="sort" defaultValue={sort} className={selectClass}>
+                  <option value="relevance">Relevance</option>
+                  <option value="newest">Newest</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-400">
+                Language
+                <select name="lang" defaultValue={lang} className={selectClass}>
+                  <option value="">Any</option>
+                  <option value="en">English</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-400">
+                Availability
+                <select name="filter" defaultValue={filter} className={selectClass}>
+                  <option value="all">All books</option>
+                  <option value="ebooks">eBooks</option>
+                  <option value="free-ebooks">Free eBooks</option>
+                </select>
+              </label>
+            </div>
+          </details>
+        </Form>
       </div>
 
       <div className="py-8 px-8 max-w-7xl mx-auto">
@@ -132,7 +246,7 @@ export default function SearchPage() {
         {!isSearching && (
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {books.map((book) => (
-              <BookCard key={book.id} {...book} />
+              <BookCard key={book.id} {...book} isBookmarked={bookmarkedIds.includes(book.id)} />
             ))}
           </ul>
         )}

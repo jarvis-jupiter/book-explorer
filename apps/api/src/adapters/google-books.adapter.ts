@@ -54,19 +54,30 @@ const toBook = (item: GoogleBooksItem) => ({
 
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
+const buildSearchParams = (
+  query: SearchBooksQuery,
+  startIndex: number,
+  pageSize: number,
+): URLSearchParams => {
+  const apiKey = process.env["GOOGLE_BOOKS_API_KEY"];
+  return new URLSearchParams({
+    q: query.query,
+    startIndex: String(startIndex),
+    maxResults: String(pageSize),
+    ...(apiKey ? { key: apiKey } : {}),
+    ...(query.sort && query.sort !== "relevance" ? { orderBy: query.sort } : {}),
+    ...(query.lang ? { langRestrict: query.lang } : {}),
+    ...(query.filter && query.filter !== "all" ? { filter: query.filter } : {}),
+  });
+};
+
 export const createGoogleBooksAdapter = (): BookRepositoryPort => ({
   search: async (query: SearchBooksQuery) => {
-    const apiKey = process.env["GOOGLE_BOOKS_API_KEY"];
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
     const startIndex = (page - 1) * pageSize;
 
-    const params = new URLSearchParams({
-      q: query.query,
-      startIndex: String(startIndex),
-      maxResults: String(pageSize),
-      ...(apiKey ? { key: apiKey } : {}),
-    });
+    const params = buildSearchParams(query, startIndex, pageSize);
 
     try {
       const response = await fetch(`${GOOGLE_BOOKS_BASE_URL}?${params.toString()}`);

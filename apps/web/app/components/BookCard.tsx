@@ -8,11 +8,24 @@ type BookCardProps = {
   readonly description: string | null;
   readonly coverUrl: string | null;
   readonly bookmarked?: boolean;
+  readonly isBookmarked?: boolean;
 };
 
-export function BookCard({ id, title, authors, publisher, description, coverUrl }: BookCardProps) {
-  const fetcher = useFetcher();
+export function BookCard({
+  id,
+  title,
+  authors,
+  publisher,
+  description,
+  coverUrl,
+  isBookmarked = false,
+}: BookCardProps) {
+  const fetcher = useFetcher<{ success?: boolean; error?: string }>();
   const isBookmarking = fetcher.state !== "idle";
+
+  // Optimistic bookmarked state: true if already bookmarked OR if we just got a 201
+  const showBookmarked =
+    isBookmarked || fetcher.data?.success === true || fetcher.data?.error === "already_bookmarked";
 
   return (
     <li className="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-amber-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5 flex gap-4 group">
@@ -46,13 +59,23 @@ export function BookCard({ id, title, authors, publisher, description, coverUrl 
           <input type="hidden" name="bookTitle" value={title} />
           <input type="hidden" name="bookCoverUrl" value={coverUrl ?? ""} />
           <input type="hidden" name="bookAuthors" value={JSON.stringify(authors)} />
-          <button
-            type="submit"
-            disabled={isBookmarking}
-            className="mt-3 w-full rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
-          >
-            {isBookmarking ? "Saving…" : "🔖 Bookmark"}
-          </button>
+          {showBookmarked ? (
+            <button
+              type="button"
+              disabled
+              className="mt-3 w-full rounded-lg border border-amber-500/50 px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/20 cursor-default"
+            >
+              ✓ Bookmarked
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isBookmarking}
+              className="mt-3 w-full rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+            >
+              {isBookmarking ? "Saving…" : "🔖 Bookmark"}
+            </button>
+          )}
         </fetcher.Form>
       </div>
     </li>

@@ -10,7 +10,8 @@ export type DomainError =
       readonly message: string;
       readonly fields?: Record<string, string>;
     }
-  | { readonly kind: "ExternalServiceError"; readonly message: string };
+  | { readonly kind: "ExternalServiceError"; readonly message: string }
+  | { readonly kind: "InternalError"; readonly message: string };
 
 export const notFound = (message: string): DomainError => ({ kind: "NotFound", message });
 export const unauthorized = (message: string): DomainError => ({ kind: "Unauthorized", message });
@@ -25,3 +26,5 @@ export const externalServiceError = (message: string): DomainError => ({
   kind: "ExternalServiceError",
   message,
 });
+
+export const internalError = (message: string): DomainError => ({ kind: "InternalError", message });
