@@ -64,11 +64,105 @@ test.describe("GET /api/books/search", () => {
       expect(Array.isArray(book.authors)).toBe(true);
     }
   });
+
+  // ── Filter query params ────────────────────────────────────────────────────
+
+  test("accepts sort=relevance and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", sort: "relevance" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+  });
+
+  test("accepts sort=newest and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", sort: "newest" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+  });
+
+  test("rejects invalid sort value with 400", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", sort: "random" },
+    });
+
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  test("accepts lang=en and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", lang: "en" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+  });
+
+  test("accepts filter=ebooks and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", filter: "ebooks" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+  });
+
+  test("accepts filter=free-ebooks and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", filter: "free-ebooks" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+  });
+
+  test("rejects invalid filter value with 400", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "javascript", filter: "audiobooks" },
+    });
+
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  test("accepts all filter params together and returns 200", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`, {
+      params: { q: "python", sort: "newest", lang: "en", filter: "ebooks" },
+    });
+
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.books)).toBe(true);
+    expect(body).toHaveProperty("page");
+    expect(body).toHaveProperty("totalItems");
+  });
+
+  // ── Error response shape ───────────────────────────────────────────────────
+
+  test("error responses include error and code fields", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/search`);
+
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+    expect(body).toHaveProperty("code");
+  });
 });
 
 test.describe("GET /api/books/:id", () => {
   test("returns 200 with book shape for a valid id", async ({ request }) => {
-    // Search first to get a real book id
     const searchRes = await request.get(`${API_URL}/api/books/search`, {
       params: { q: "clean code" },
     });
@@ -86,5 +180,14 @@ test.describe("GET /api/books/:id", () => {
     expect(typeof body.title).toBe("string");
     expect(body).toHaveProperty("authors");
     expect(Array.isArray(body.authors)).toBe(true);
+  });
+
+  test("returns 404 with error and code for unknown id", async ({ request }) => {
+    const res = await request.get(`${API_URL}/api/books/TOTALLY_INVALID_BOOK_ID_XYZ`);
+
+    expect(res.status()).toBe(404);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+    expect(body).toHaveProperty("code");
   });
 });
