@@ -5,7 +5,22 @@ test.describe("Home page", () => {
     await page.goto("/");
 
     await expect(page).toHaveTitle("Book Explorer");
+    // Heading is plain text "Book Explorer" (emoji lives in the nav logo, not the h1)
     await expect(page.getByRole("heading", { name: /book explorer/i })).toBeVisible();
+  });
+
+  test("displays the hero subtext", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByText(/discover.*search.*bookmark/i)).toBeVisible();
+  });
+
+  test("displays the stats row", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByText(/1M\+ Books/)).toBeVisible();
+    await expect(page.getByText(/Google Books Powered/)).toBeVisible();
+    await expect(page.getByText(/Free Forever/)).toBeVisible();
   });
 
   test("has a working 'Search Books' link", async ({ page }) => {
@@ -27,5 +42,19 @@ test.describe("Home page", () => {
     await page.waitForLoadState("networkidle");
     const url = page.url();
     expect(url).toMatch(/\/bookmarks|\/sign-in|\/$/);
+  });
+
+  test("nav contains Search and Bookmarks links", async ({ page }) => {
+    await page.goto("/");
+
+    const nav = page.getByRole("navigation");
+    await expect(nav.getByRole("link", { name: /^search$/i })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^bookmarks$/i })).toBeVisible();
+  });
+
+  test("nav has a Sign In button when unauthenticated", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
 });
