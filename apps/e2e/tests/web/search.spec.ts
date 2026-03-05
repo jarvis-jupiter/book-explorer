@@ -34,7 +34,7 @@ test.describe("Search page", () => {
     await page.getByRole("button", { name: /search/i }).click();
 
     // Wait for loader to complete and result count to appear
-    await expect(page.getByText(/results for/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
 
     // At least one book card should appear (rendered as list items)
     const bookItems = page.getByRole("listitem");
@@ -44,15 +44,16 @@ test.describe("Search page", () => {
   test("result count uses correct singular/plural", async ({ page }) => {
     await page.goto("/search?q=javascript");
 
-    await expect(page.getByText(/results? for/i)).toBeVisible({ timeout: 15_000 });
-    // Result count text should include "javascript" in quotes
+    // Match "N result(s) for" — the leading digit distinguishes it from book descriptions
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
+    // Result count text should include "javascript" in curly quotes
     await expect(page.getByText(/\u201cjavascript\u201d/i)).toBeVisible({ timeout: 15_000 });
   });
 
   test("accepts query via URL param and pre-fills the search input", async ({ page }) => {
     await page.goto("/search?q=python");
 
-    await expect(page.getByText(/results for/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("searchbox", { name: /search query/i })).toHaveValue("python");
   });
 
@@ -66,15 +67,16 @@ test.describe("Search page", () => {
       "xkzjqwpvmlsnthgbr",
     );
 
-    // Either the "no books found" empty state appears, or results appear (Google may return partial matches)
+    // Either "No books found" empty state or a "0 results for" count appears.
+    // Use .first() because both may be visible simultaneously (count + empty state heading).
     const noResults = page.getByText(/no books found/i);
-    const resultCount = page.getByText(/results for/i);
-    await expect(noResults.or(resultCount)).toBeVisible({ timeout: 15_000 });
+    const resultCount = page.getByText(/\d+ results? for/i);
+    await expect(noResults.or(resultCount).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test("navigating back to /search clears query and shows prompt", async ({ page }) => {
     await page.goto("/search?q=tolkien");
-    await expect(page.getByText(/results for/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/\d+ results? for/i)).toBeVisible({ timeout: 15_000 });
 
     await page.goto("/search");
     await expect(page.getByText(/results for/i)).not.toBeVisible();
