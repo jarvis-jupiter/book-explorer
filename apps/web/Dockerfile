@@ -44,4 +44,7 @@ COPY --from=build --chown=nodeuser:nodejs /prod/web .
 
 USER nodeuser
 EXPOSE 3000
+STOPSIGNAL SIGTERM
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
 CMD ["node_modules/.bin/remix-serve", "./build/server/index.js"]

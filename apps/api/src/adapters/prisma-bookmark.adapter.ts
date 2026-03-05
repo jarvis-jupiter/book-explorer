@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@book-explorer/db";
+import { Prisma, type PrismaClient } from "@book-explorer/db";
 import type { Bookmark, BookmarkId, CreateBookmarkInput, UserId } from "@book-explorer/domain";
 import { conflict, notFound } from "../domain/errors.js";
 import { err, ok } from "../domain/result.js";
@@ -56,8 +56,11 @@ export const createPrismaBookmarkAdapter = (prisma: PrismaClient): BookmarkRepos
         },
       });
       return ok(toBookmark(row));
-    } catch {
-      return err(conflict("Bookmark already exists for this book"));
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return err(conflict("Bookmark already exists for this book"));
+      }
+      throw e;
     }
   },
 
@@ -65,8 +68,11 @@ export const createPrismaBookmarkAdapter = (prisma: PrismaClient): BookmarkRepos
     try {
       await prisma.bookmark.delete({ where: { id } });
       return ok(undefined);
-    } catch {
-      return err(notFound(`Bookmark ${id} not found`));
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+        return err(notFound(`Bookmark ${id} not found`));
+      }
+      throw e;
     }
   },
 });

@@ -77,4 +77,7 @@ RUN chmod +x ./entrypoint.sh
 
 USER nodeuser
 EXPOSE 3001
+STOPSIGNAL SIGTERM
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3001) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 CMD ["./entrypoint.sh"]

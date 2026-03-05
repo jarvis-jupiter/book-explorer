@@ -13,6 +13,12 @@ import { BookCard } from "../components/BookCard.js";
 
 export const meta: MetaFunction = () => [{ title: "Search Books — Book Explorer" }];
 
+// Cache search results for 5 min; serve stale for up to 10 min while revalidating.
+// Google Books data doesn't change second-by-second, so this is safe.
+export const headers = () => ({
+  "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+});
+
 const PAGE_SIZE = 10;
 const API_BASE_URL = process.env["API_BASE_URL"] ?? "http://localhost:3001";
 

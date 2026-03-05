@@ -20,6 +20,9 @@ model User {
   updatedAt   DateTime   @updatedAt
   bookmarks   Bookmark[]
 
+  // clerkId is already covered by the UNIQUE constraint above;
+  // the explicit index helps the query planner on some DB versions.
+  @@index([clerkId])
   @@map("users")
 }
 
@@ -34,5 +37,7 @@ model Bookmark {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, bookId])
+  @@index([userId])    // fast bookmark list per user
+  @@index([createdAt]) // fast sort by date
   @@map("bookmarks")
 }

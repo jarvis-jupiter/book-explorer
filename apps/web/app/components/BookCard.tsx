@@ -63,6 +63,7 @@ export function BookCard({
             <button
               type="button"
               disabled
+              aria-label="Already bookmarked"
               className="mt-3 w-full rounded-lg border border-amber-500/50 px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/20 cursor-default"
             >
               ✓ Bookmarked
@@ -71,6 +72,7 @@ export function BookCard({
             <button
               type="submit"
               disabled={isBookmarking}
+              aria-label="Add to bookmarks"
               className="mt-3 w-full rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
             >
               {isBookmarking ? "Saving…" : "🔖 Bookmark"}

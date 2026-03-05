@@ -17,14 +17,18 @@
     "@book-explorer/db": "workspace:*",
     "@book-explorer/domain": "workspace:*",
     "@clerk/backend": "^1.16.5",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "express-async-errors": "^3.1.1",
     "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "prisma": "6.19.2",
     "svix": "^1.86.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.19.13",
