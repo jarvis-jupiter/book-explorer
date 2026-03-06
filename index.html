@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Explorer — Architecture Presentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020617;
+    --surface: #0f172a;
+    --surface2: #1e293b;
+    --border: #334155;
+    --amber: #f59e0b;
+    --amber-light: #fcd34d;
+    --amber-dim: rgba(245,158,11,0.15);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --dim: #475569;
+    --green: #34d399;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 48px 64px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* NAV */
+  .nav {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 99px; padding: 8px 20px;
+    z-index: 100;
+  }
+  .nav button {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; transition: color 0.2s, background 0.2s;
+  }
+  .nav button:hover { color: var(--amber); background: var(--amber-dim); }
+  .nav .counter { font-size: 13px; color: var(--dim); min-width: 60px; text-align: center; font-variant-numeric: tabular-nums; }
+  .progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--amber), #f97316);
+    transition: width 0.4s ease; z-index: 100;
+  }
+
+  /* TYPOGRAPHY */
+  .label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--amber); margin-bottom: 16px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(42px, 5vw, 72px);
+    background: linear-gradient(135deg, var(--amber-light), var(--amber), #f97316);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1; text-align: center;
+  }
+  h2 {
+    font-size: clamp(24px, 3vw, 36px); font-weight: 700;
+    color: var(--text); margin-bottom: 32px; text-align: center;
+  }
+  h3 { font-size: 16px; font-weight: 600; color: var(--amber); margin-bottom: 8px; }
+  p { color: var(--muted); line-height: 1.7; font-size: 15px; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--amber); background: var(--amber-dim); padding: 2px 6px; border-radius: 4px; }
+
+  /* CARDS */
+  .grid { display: grid; gap: 16px; width: 100%; max-width: 1100px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(245,158,11,0.4); }
+  .card .icon { font-size: 28px; margin-bottom: 12px; display: block; }
+  .card p { font-size: 13px; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; padding: 4px 10px;
+    border-radius: 99px; border: 1px solid;
+  }
+  .badge-amber { color: var(--amber); border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
+  .badge-blue  { color: var(--blue);  border-color: rgba(96,165,250,0.4);  background: rgba(96,165,250,0.08); }
+  .badge-green { color: var(--green); border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.08); }
+  .badge-purple{ color: var(--purple);border-color: rgba(167,139,250,0.4);background: rgba(167,139,250,0.08); }
+  .badge-red   { color: var(--red);   border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+
+  /* DIAGRAM SHARED */
+  svg text { font-family: 'Inter', sans-serif; }
+  .diagram { width: 100%; max-width: 900px; }
+
+  /* SLIDE SPECIFIC */
+  .subtitle { font-size: 18px; color: var(--muted); text-align: center; max-width: 600px; margin-top: 16px; line-height: 1.6; }
+  .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 28px; }
+  .flow-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .flow-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500;
+  }
+  .flow-arrow { color: var(--dim); font-size: 18px; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+  .highlight { color: var(--amber); font-weight: 600; }
+  ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  ul li::before { content: '▸ '; color: var(--amber); }
+  ul li { font-size: 14px; color: var(--muted); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; width: 100%; max-width: 1100px; align-items: start; }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 16px; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 10px;
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--amber-dim);
+    border: 1px solid rgba(245,158,11,0.4); color: var(--amber);
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-content h4 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .step-content p { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active">
+    <div class="label">📚 Architecture Presentation</div>
+    <h1>Book Explorer</h1>
+    <p class="subtitle">A full-stack monorepo application for discovering, searching, and bookmarking books — built with modern web standards and production-grade engineering practices.</p>
+    <div class="hero-badges">
+      <span class="badge badge-amber">TypeScript</span>
+      <span class="badge badge-blue">Remix + React</span>
+      <span class="badge badge-green">Express.js</span>
+      <span class="badge badge-purple">PostgreSQL</span>
+      <span class="badge badge-amber">Prisma ORM</span>
+      <span class="badge badge-blue">Docker</span>
+      <span class="badge badge-green">Railway</span>
+      <span class="badge badge-purple">Turborepo</span>
+    </div>
+    <p style="margin-top:40px; font-size:13px; color:var(--dim)">Use ← → keys or buttons to navigate</p>
+  </div>
+
+  <!-- SLIDE 2: TECH STACK -->
+  <div class="slide">
+    <div class="label">Technologies</div>
+    <h2>Full Stack at a Glance</h2>
+    <div class="grid grid-4" style="max-width:1100px">
+      <div class="card">
+        <span class="icon">⚛️</span>
+        <h3>Frontend</h3>
+        <ul>
+          <li>Remix v2 (SSR)</li>
+          <li>React 18</li>
+          <li>Tailwind CSS v3</li>
+          <li>Clerk Auth</li>
+          <li>Playwright E2E</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="icon">🟢</span>
+        <h3>Backend</h3>
+        <ul>
+          <li>Express.js</li>
+          <li>Helmet (security)</li>
+          <li>Compression (Gzip)</li>
+          <li>Rate Limiting</li>
+          <li>Svix (webhooks)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="icon">🗄️</span>
+        <h3>Data</h3>
+        <ul>
+          <li>PostgreSQL 16</li>
+          <li>Prisma ORM</li>
+          <li>Google Books API</li>
+          <li>Zod validation</li>
+          <li>DB migrations</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="icon">🏗️</span>
+        <h3>Infrastructure</h3>
+        <ul>
+          <li>pnpm workspaces</li>
+          <li>Turborepo</li>
+          <li>Docker multi-stage</li>
+          <li>GitHub Actions</li>
+          <li>Railway hosting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: MONOREPO STRUCTURE -->
+  <div class="slide">
+    <div class="label">Project Structure</div>
+    <h2>Monorepo Architecture</h2>
+    <div class="two-col">
+      <div>
+        <div class="section-title">pnpm Workspaces + Turborepo</div>
+        <svg viewBox="0 0 420 360" class="diagram">
+          <rect width="420" height="360" fill="var(--surface)" rx="12"/>
+          <!-- Root -->
+          <rect x="140" y="16" width="140" height="36" rx="8" fill="var(--amber-dim)" stroke="var(--amber)" stroke-width="1.5"/>
+          <text x="210" y="39" fill="var(--amber)" font-size="13" font-weight="600" text-anchor="middle">book-explorer/</text>
+          <!-- Lines down -->
+          <line x1="210" y1="52" x2="210" y2="70" stroke="var(--dim)" stroke-width="1.5"/>
+          <line x1="70" y1="70" x2="350" y2="70" stroke="var(--dim)" stroke-width="1.5"/>
+          <!-- apps/ -->
+          <line x1="90" y1="70" x2="90" y2="86" stroke="var(--dim)" stroke-width="1.5"/>
+          <rect x="30" y="86" width="120" height="32" rx="8" fill="rgba(96,165,250,0.1)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <text x="90" y="107" fill="var(--blue)" font-size="12" font-weight="600" text-anchor="middle">apps/</text>
+          <!-- packages/ -->
+          <line x1="210" y1="70" x2="210" y2="86" stroke="var(--dim)" stroke-width="1.5"/>
+          <rect x="150" y="86" width="120" height="32" rx="8" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+          <text x="210" y="107" fill="var(--purple)" font-size="12" font-weight="600" text-anchor="middle">packages/</text>
+          <!-- tooling -->
+          <line x1="330" y1="70" x2="330" y2="86" stroke="var(--dim)" stroke-width="1.5"/>
+          <rect x="270" y="86" width="120" height="32" rx="8" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+          <text x="330" y="107" fill="var(--green)" font-size="12" font-weight="600" text-anchor="middle">tooling/</text>
+          <!-- apps children -->
+          <line x1="90" y1="118" x2="90" y2="140" stroke="var(--dim)" stroke-width="1"/>
+          <line x1="40" y1="140" x2="90" y2="140" stroke="var(--dim)" stroke-width="1"/>
+          <line x1="90" y1="140" x2="140" y2="140" stroke="var(--dim)" stroke-width="1"/>
+          <rect x="10" y="148" width="62" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="41" y="167" fill="var(--muted)" font-size="11" text-anchor="middle">web</text>
+          <rect x="78" y="148" width="62" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="109" y="167" fill="var(--muted)" font-size="11" text-anchor="middle">api</text>
+          <!-- e2e -->
+          <line x1="90" y1="140" x2="90" y2="196" stroke="var(--dim)" stroke-width="1"/>
+          <rect x="59" y="196" width="62" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="90" y="215" fill="var(--muted)" font-size="11" text-anchor="middle">e2e</text>
+          <!-- packages children -->
+          <line x1="210" y1="118" x2="210" y2="140" stroke="var(--dim)" stroke-width="1"/>
+          <line x1="160" y1="140" x2="260" y2="140" stroke="var(--dim)" stroke-width="1"/>
+          <rect x="148" y="148" width="62" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="179" y="167" fill="var(--muted)" font-size="11" text-anchor="middle">domain</text>
+          <rect x="218" y="148" width="62" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="249" y="167" fill="var(--muted)" font-size="11" text-anchor="middle">db</text>
+          <!-- turbo pipeline -->
+          <rect x="20" y="246" width="380" height="98" rx="10" fill="rgba(245,158,11,0.05)" stroke="rgba(245,158,11,0.2)" stroke-width="1"/>
+          <text x="210" y="268" fill="var(--amber)" font-size="11" font-weight="600" text-anchor="middle">Turborepo Pipeline</text>
+          <text x="40" y="292" fill="var(--muted)" font-size="11">build</text>
+          <text x="40" y="310" fill="var(--muted)" font-size="11">typecheck</text>
+          <text x="40" y="328" fill="var(--muted)" font-size="11">test</text>
+          <text x="180" y="292" fill="var(--dim)" font-size="11">→  dependsOn: ["^build"]</text>
+          <text x="180" y="310" fill="var(--dim)" font-size="11">→  dependsOn: ["^build"]</text>
+          <text x="180" y="328" fill="var(--dim)" font-size="11">→  outputs: ["coverage/**"]</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">Shared Packages</div>
+        <div class="card" style="margin-bottom:12px">
+          <h3>@book-explorer/domain</h3>
+          <p>Pure TypeScript types & schemas shared between API and Web. <code>Book</code>, <code>Bookmark</code>, <code>User</code> types, Zod schemas, <code>Result&lt;T&gt;</code> monad.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <h3>@book-explorer/db</h3>
+          <p>Prisma client, schema, and migrations. Single source of truth for the database model. Generated client consumed by the API.</p>
+        </div>
+        <div class="card">
+          <h3>Turborepo caching</h3>
+          <p>Tasks only re-run on changed packages. <code>build</code>, <code>typecheck</code>, <code>test</code> outputs are cached — skipped when inputs unchanged.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: HEXAGONAL ARCHITECTURE -->
+  <div class="slide">
+    <div class="label">Design Pattern</div>
+    <h2>Hexagonal Architecture (Ports & Adapters)</h2>
+    <div class="two-col">
+      <div>
+        <svg viewBox="0 0 400 400" class="diagram">
+          <!-- Outer ring: Adapters -->
+          <circle cx="200" cy="200" r="180" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+          <!-- Middle ring: Ports -->
+          <circle cx="200" cy="200" r="120" fill="rgba(167,139,250,0.04)" stroke="rgba(167,139,250,0.3)" stroke-width="1.5"/>
+          <!-- Inner: Domain -->
+          <circle cx="200" cy="200" r="60" fill="rgba(245,158,11,0.08)" stroke="var(--amber)" stroke-width="2"/>
+          <text x="200" y="195" fill="var(--amber)" font-size="12" font-weight="700" text-anchor="middle">Domain</text>
+          <text x="200" y="212" fill="var(--amber)" font-size="10" text-anchor="middle">Use Cases</text>
+
+          <!-- Ports labels -->
+          <text x="200" y="92" fill="var(--purple)" font-size="10" font-weight="600" text-anchor="middle">BookSearchPort</text>
+          <text x="200" y="316" fill="var(--purple)" font-size="10" font-weight="600" text-anchor="middle">BookmarkRepositoryPort</text>
+          <text x="52" y="175" fill="var(--purple)" font-size="10" font-weight="600" text-anchor="middle" transform="rotate(-45,52,175)">UserRepoPort</text>
+          <text x="348" y="175" fill="var(--purple)" font-size="10" font-weight="600" text-anchor="middle" transform="rotate(45,348,175)">BookRepoPort</text>
+
+          <!-- Adapters -->
+          <!-- Top: Google Books -->
+          <rect x="130" y="12" width="140" height="36" rx="8" fill="rgba(96,165,250,0.1)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <text x="200" y="31" fill="var(--blue)" font-size="11" font-weight="600" text-anchor="middle">Google Books API</text>
+          <text x="200" y="44" fill="var(--dim)" font-size="10" text-anchor="middle">HTTP Adapter</text>
+          <line x1="200" y1="48" x2="200" y2="78" stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- Bottom: Prisma -->
+          <rect x="130" y="352" width="140" height="36" rx="8" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+          <text x="200" y="371" fill="var(--green)" font-size="11" font-weight="600" text-anchor="middle">Prisma ORM</text>
+          <text x="200" y="384" fill="var(--dim)" font-size="10" text-anchor="middle">DB Adapter</text>
+          <line x1="200" y1="322" x2="200" y2="352" stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- Left: Express HTTP -->
+          <rect x="4" y="182" width="110" height="36" rx="8" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.35)" stroke-width="1.5"/>
+          <text x="59" y="200" fill="var(--amber)" font-size="11" font-weight="600" text-anchor="middle">Express HTTP</text>
+          <text x="59" y="213" fill="var(--dim)" font-size="10" text-anchor="middle">Inbound Adapter</text>
+          <line x1="114" y1="200" x2="138" y2="200" stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- Right: Clerk Auth -->
+          <rect x="286" y="182" width="110" height="36" rx="8" fill="rgba(248,113,113,0.1)" stroke="rgba(248,113,113,0.4)" stroke-width="1.5"/>
+          <text x="341" y="200" fill="var(--red)" font-size="11" font-weight="600" text-anchor="middle">Clerk Auth</text>
+          <text x="341" y="213" fill="var(--dim)" font-size="10" text-anchor="middle">Auth Adapter</text>
+          <line x1="262" y1="200" x2="286" y2="200" stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- Ring labels -->
+          <text x="312" y="80" fill="var(--border)" font-size="10" text-anchor="middle">Adapters</text>
+          <text x="312" y="135" fill="rgba(167,139,250,0.5)" font-size="10" text-anchor="middle">Ports</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">Layer Responsibilities</div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Domain Core</h4>
+            <p>Pure business logic — use cases (<code>AddBookmarkUseCase</code>, <code>SearchBooksUseCase</code>). No framework dependencies. Fully testable in isolation.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Ports (Interfaces)</h4>
+            <p>TypeScript interfaces the domain depends on: <code>BookSearchPort</code>, <code>BookmarkRepositoryPort</code>, <code>UserRepositoryPort</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Adapters (Implementations)</h4>
+            <p>Concrete implementations wired at startup: Google Books HTTP adapter, Prisma repository adapters, Express HTTP router, Clerk auth middleware.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Dependency Inversion</h4>
+            <p>Domain never imports adapters. Adapters are injected at composition root (<code>index.ts</code>). Swapping Prisma for another DB requires only a new adapter.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: RESULT MONAD + FUNCTIONAL PATTERNS -->
+  <div class="slide">
+    <div class="label">Design Patterns</div>
+    <h2>Functional Programming Patterns</h2>
+    <div class="grid grid-3" style="max-width:1100px">
+      <div class="card">
+        <span class="icon">🎯</span>
+        <h3>Result&lt;T&gt; Monad</h3>
+        <p>Errors are part of the return type — never thrown. The compiler forces callers to handle both success and failure paths.</p>
+        <div style="margin-top:12px; background:var(--bg); border-radius:8px; padding:12px">
+          <p class="mono" style="color:var(--green)">type Result&lt;T&gt; =</p>
+          <p class="mono" style="color:var(--muted)">  | &#123; ok: true; value: T &#125;</p>
+          <p class="mono" style="color:var(--muted)">  | &#123; ok: false; error: AppError &#125;</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="icon">🔧</span>
+        <h3>No Classes</h3>
+        <p>All code written as pure functions and factory functions. Use cases are objects with an <code>execute</code> method created via factory functions, not class instantiation.</p>
+        <div style="margin-top:12px; background:var(--bg); border-radius:8px; padding:12px">
+          <p class="mono" style="color:var(--blue)">const createAddBookmark =</p>
+          <p class="mono" style="color:var(--muted)">  (repo: BookmarkRepo) =&gt; (&#123;</p>
+          <p class="mono" style="color:var(--muted)">    execute: async (input) =&gt; ...</p>
+          <p class="mono" style="color:var(--muted)">  &#125;)</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="icon">✅</span>
+        <h3>Test-Driven Development</h3>
+        <p>Every feature written test-first. Unit tests for domain logic, integration tests for adapters, Playwright E2E for user flows. CI enforces all checks before merge.</p>
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:6px">
+          <span class="badge badge-green">61 Unit Tests</span>
+          <span class="badge badge-blue">60 E2E Tests</span>
+          <span class="badge badge-purple">Page Object Model</span>
+        </div>
+      </div>
+      <div class="card">
+        <span class="icon">🛡️</span>
+        <h3>Zod Validation</h3>
+        <p>All external inputs — HTTP request bodies, query params, API responses — validated at the boundary with Zod schemas. Invalid data never reaches domain logic.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🏷️</span>
+        <h3>Discriminated Unions</h3>
+        <p>Errors carry a <code>kind</code> discriminant: <code>ValidationError</code>, <code>NotFound</code>, <code>Conflict</code>, <code>Forbidden</code>. Routes map each kind to the correct HTTP status code.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🔒</span>
+        <h3>Readonly by Default</h3>
+        <p>All domain types use <code>readonly</code> properties. TypeScript strict mode enforced. Biome linter ensures consistent code style and catches common errors at CI time.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: DATABASE SCHEMA -->
+  <div class="slide">
+    <div class="label">Data Layer</div>
+    <h2>Database Schema & Prisma</h2>
+    <div class="two-col">
+      <div>
+        <svg viewBox="0 0 380 320" class="diagram">
+          <!-- Users table -->
+          <rect x="20" y="20" width="150" height="200" rx="10" fill="var(--surface)" stroke="var(--amber)" stroke-width="1.5"/>
+          <rect x="20" y="20" width="150" height="36" rx="10 10 0 0" fill="var(--amber-dim)" stroke="var(--amber)" stroke-width="1.5"/>
+          <text x="95" y="44" fill="var(--amber)" font-size="13" font-weight="700" text-anchor="middle">users</text>
+          <text x="32" y="75" fill="var(--dim)" font-size="10">PK</text>
+          <text x="52" y="75" fill="var(--text)" font-size="11">id</text>
+          <text x="105" y="75" fill="var(--dim)" font-size="10">TEXT CUID</text>
+          <line x1="28" y1="82" x2="162" y2="82" stroke="var(--border)" stroke-width="1"/>
+          <text x="32" y="97" fill="var(--dim)" font-size="10">UQ</text>
+          <text x="52" y="97" fill="var(--text)" font-size="11">clerkId</text>
+          <text x="105" y="97" fill="var(--dim)" font-size="10">TEXT</text>
+          <line x1="28" y1="104" x2="162" y2="104" stroke="var(--border)" stroke-width="1"/>
+          <text x="32" y="119" fill="var(--dim)" font-size="10">UQ</text>
+          <text x="52" y="119" fill="var(--text)" font-size="11">email</text>
+          <text x="105" y="119" fill="var(--dim)" font-size="10">TEXT</text>
+          <line x1="28" y1="126" x2="162" y2="126" stroke="var(--border)" stroke-width="1"/>
+          <text x="52" y="141" fill="var(--text)" font-size="11">displayName</text>
+          <text x="130" y="141" fill="var(--dim)" font-size="10">TEXT?</text>
+          <line x1="28" y1="148" x2="162" y2="148" stroke="var(--border)" stroke-width="1"/>
+          <text x="52" y="163" fill="var(--text)" font-size="11">createdAt</text>
+          <text x="120" y="163" fill="var(--dim)" font-size="10">TSTZ</text>
+          <line x1="28" y1="170" x2="162" y2="170" stroke="var(--border)" stroke-width="1"/>
+          <text x="52" y="185" fill="var(--text)" font-size="11">updatedAt</text>
+          <text x="120" y="185" fill="var(--dim)" font-size="10">TSTZ</text>
+          <line x1="28" y1="192" x2="162" y2="192" stroke="var(--border)" stroke-width="1"/>
+          <text x="52" y="207" fill="var(--green)" font-size="11">bookmarks[]</text>
+          <text x="120" y="207" fill="var(--dim)" font-size="10">rel</text>
+
+          <!-- Bookmarks table -->
+          <rect x="210" y="20" width="155" height="264" rx="10" fill="var(--surface)" stroke="var(--blue)" stroke-width="1.5"/>
+          <rect x="210" y="20" width="155" height="36" rx="10 10 0 0" fill="rgba(96,165,250,0.1)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <text x="287" y="44" fill="var(--blue)" font-size="13" font-weight="700" text-anchor="middle">bookmarks</text>
+          <text x="222" y="75" fill="var(--dim)" font-size="10">PK</text>
+          <text x="242" y="75" fill="var(--text)" font-size="11">id</text>
+          <text x="300" y="75" fill="var(--dim)" font-size="10">TEXT CUID</text>
+          <line x1="218" y1="82" x2="357" y2="82" stroke="var(--border)" stroke-width="1"/>
+          <text x="222" y="97" fill="var(--red)" font-size="10">FK</text>
+          <text x="242" y="97" fill="var(--text)" font-size="11">userId</text>
+          <text x="300" y="97" fill="var(--dim)" font-size="10">TEXT</text>
+          <line x1="218" y1="104" x2="357" y2="104" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="119" fill="var(--text)" font-size="11">bookId</text>
+          <text x="300" y="119" fill="var(--dim)" font-size="10">TEXT</text>
+          <line x1="218" y1="126" x2="357" y2="126" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="141" fill="var(--text)" font-size="11">bookTitle</text>
+          <text x="300" y="141" fill="var(--dim)" font-size="10">TEXT</text>
+          <line x1="218" y1="148" x2="357" y2="148" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="163" fill="var(--text)" font-size="11">bookCoverUrl</text>
+          <text x="318" y="163" fill="var(--dim)" font-size="10">TEXT?</text>
+          <line x1="218" y1="170" x2="357" y2="170" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="185" fill="var(--text)" font-size="11">bookAuthors</text>
+          <text x="310" y="185" fill="var(--dim)" font-size="10">TEXT[]</text>
+          <line x1="218" y1="192" x2="357" y2="192" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="207" fill="var(--text)" font-size="11">createdAt</text>
+          <text x="310" y="207" fill="var(--dim)" font-size="10">TSTZ</text>
+          <line x1="218" y1="214" x2="357" y2="214" stroke="var(--border)" stroke-width="1"/>
+          <text x="242" y="232" fill="var(--dim)" font-size="10">IDX: userId</text>
+          <text x="242" y="248" fill="var(--dim)" font-size="10">IDX: createdAt</text>
+          <text x="242" y="264" fill="var(--dim)" font-size="10">UQ: (userId, bookId)</text>
+
+          <!-- FK arrow -->
+          <line x1="170" y1="120" x2="210" y2="97" stroke="var(--red)" stroke-width="1.5" marker-end="url(#arr)"/>
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="var(--red)"/>
+            </marker>
+          </defs>
+          <text x="175" y="112" fill="var(--red)" font-size="9">1:N</text>
+
+          <!-- Cascade note -->
+          <rect x="60" y="288" width="260" height="24" rx="6" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+          <text x="190" y="304" fill="var(--green)" font-size="11" text-anchor="middle">CASCADE delete on user removal</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">Key Design Decisions</div>
+        <div class="step">
+          <div class="step-num">💾</div>
+          <div class="step-content">
+            <h4>Denormalised bookmark data</h4>
+            <p>Book metadata (title, cover, authors) stored in bookmark row — avoids a join to Google Books API on every bookmark fetch. Books aren't stored in our DB.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔑</div>
+          <div class="step-content">
+            <h4>Clerk → DB user sync</h4>
+            <p>Clerk handles auth. DB <code>users</code> table syncs via webhooks (<code>user.created/updated/deleted</code>) and auth middleware upsert for race condition resilience.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🚫</div>
+          <div class="step-content">
+            <h4>Unique constraint prevents duplicates</h4>
+            <p><code>@@unique([userId, bookId])</code> at DB level, with <code>P2002</code> error code caught in the repository and mapped to a <code>Conflict</code> domain error.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">⚡</div>
+          <div class="step-content">
+            <h4>Indexes on hot queries</h4>
+            <p><code>@@index([userId])</code> for bookmark list; <code>@@index([createdAt])</code> for sorted queries. clerkId covered by its unique constraint.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: REMIX FRONTEND ARCHITECTURE -->
+  <div class="slide">
+    <div class="label">Frontend</div>
+    <h2>Remix Architecture</h2>
+    <div class="two-col">
+      <div>
+        <svg viewBox="0 0 400 380" class="diagram">
+          <!-- Browser -->
+          <rect x="10" y="10" width="115" height="50" rx="8" fill="rgba(96,165,250,0.08)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <text x="67" y="32" fill="var(--blue)" font-size="11" font-weight="600" text-anchor="middle">Browser</text>
+          <text x="67" y="50" fill="var(--dim)" font-size="10" text-anchor="middle">Request / Form</text>
+
+          <!-- Remix Server -->
+          <rect x="145" y="10" width="110" height="50" rx="8" fill="var(--amber-dim)" stroke="var(--amber)" stroke-width="1.5"/>
+          <text x="200" y="32" fill="var(--amber)" font-size="11" font-weight="600" text-anchor="middle">Remix Server</text>
+          <text x="200" y="50" fill="var(--dim)" font-size="10" text-anchor="middle">SSR + Hydration</text>
+
+          <!-- Arrows -->
+          <line x1="125" y1="35" x2="145" y2="35" stroke="var(--dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+          <defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--dim)"/></marker></defs>
+
+          <!-- Routes block -->
+          <rect x="10" y="90" width="370" height="130" rx="10" fill="rgba(167,139,250,0.04)" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
+          <text x="195" y="112" fill="var(--purple)" font-size="11" font-weight="600" text-anchor="middle">Routes (File-based)</text>
+          <!-- route pills -->
+          <rect x="20" y="122" width="80" height="24" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="60" y="139" fill="var(--text)" font-size="10" text-anchor="middle">_index</text>
+          <rect x="108" y="122" width="80" height="24" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="148" y="139" fill="var(--text)" font-size="10" text-anchor="middle">search</text>
+          <rect x="196" y="122" width="90" height="24" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="241" y="139" fill="var(--text)" font-size="10" text-anchor="middle">bookmarks</text>
+          <rect x="294" y="122" width="78" height="24" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="333" y="139" fill="var(--text)" font-size="10" text-anchor="middle">books.$id</text>
+
+          <!-- Patterns -->
+          <rect x="20" y="158" width="100" height="52" rx="6" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+          <text x="70" y="175" fill="var(--green)" font-size="10" font-weight="600" text-anchor="middle">loader()</text>
+          <text x="70" y="190" fill="var(--dim)" font-size="9" text-anchor="middle">Server-side</text>
+          <text x="70" y="202" fill="var(--dim)" font-size="9" text-anchor="middle">data fetch</text>
+          <rect x="130" y="158" width="100" height="52" rx="6" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.3)" stroke-width="1"/>
+          <text x="180" y="175" fill="var(--amber)" font-size="10" font-weight="600" text-anchor="middle">action()</text>
+          <text x="180" y="190" fill="var(--dim)" font-size="9" text-anchor="middle">POST/mutation</text>
+          <text x="180" y="202" fill="var(--dim)" font-size="9" text-anchor="middle">+ redirect</text>
+          <rect x="240" y="158" width="130" height="52" rx="6" fill="rgba(96,165,250,0.06)" stroke="rgba(96,165,250,0.3)" stroke-width="1"/>
+          <text x="305" y="175" fill="var(--blue)" font-size="10" font-weight="600" text-anchor="middle">useFetcher()</text>
+          <text x="305" y="190" fill="var(--dim)" font-size="9" text-anchor="middle">Non-navigating</text>
+          <text x="305" y="202" fill="var(--dim)" font-size="9" text-anchor="middle">async mutations</text>
+
+          <!-- Components -->
+          <rect x="10" y="244" width="370" height="80" rx="10" fill="rgba(52,211,153,0.04)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+          <text x="195" y="264" fill="var(--green)" font-size="11" font-weight="600" text-anchor="middle">Shared Components</text>
+          <rect x="20" y="272" width="80" height="40" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="60" y="290" fill="var(--text)" font-size="10" text-anchor="middle">BookCard</text>
+          <text x="60" y="304" fill="var(--dim)" font-size="9" text-anchor="middle">useFetcher</text>
+          <rect x="108" y="272" width="80" height="40" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="148" y="290" fill="var(--text)" font-size="10" text-anchor="middle">SearchForm</text>
+          <text x="148" y="304" fill="var(--dim)" font-size="9" text-anchor="middle">Remix &lt;Form&gt;</text>
+          <rect x="196" y="272" width="80" height="40" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="236" y="290" fill="var(--text)" font-size="10" text-anchor="middle">Nav</text>
+          <text x="236" y="304" fill="var(--dim)" font-size="9" text-anchor="middle">Clerk state</text>
+          <rect x="284" y="272" width="88" height="40" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="328" y="290" fill="var(--text)" font-size="10" text-anchor="middle">ErrorBoundary</text>
+          <text x="328" y="304" fill="var(--dim)" font-size="9" text-anchor="middle">per route</text>
+
+          <!-- Security headers note -->
+          <rect x="10" y="336" width="370" height="30" rx="8" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.3)" stroke-width="1"/>
+          <text x="195" y="355" fill="var(--red)" font-size="11" text-anchor="middle">Security headers injected in entry.server.tsx on every response</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">Key Remix Principles Applied</div>
+        <div class="step">
+          <div class="step-num">🌐</div>
+          <div class="step-content">
+            <h4>Server-side rendering by default</h4>
+            <p>Loaders run on the server — no client-side data fetching waterfalls. Search results, bookmarks, and book details are SSR'd for instant first paint and SEO.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">📝</div>
+          <div class="step-content">
+            <h4>Progressive enhancement</h4>
+            <p><code>&lt;Form method="get"&gt;</code> for search works without JS. <code>useFetcher</code> enhances bookmark button to post without page navigation when JS is available.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">⚡</div>
+          <div class="step-content">
+            <h4>HTTP caching on search</h4>
+            <p><code>Cache-Control: public, max-age=300, stale-while-revalidate=600</code> — search results cached 5 minutes in browser and CDN, served stale for up to 10 minutes while revalidating.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔐</div>
+          <div class="step-content">
+            <h4>Clerk integration</h4>
+            <p><code>rootAuthLoader</code> in root.tsx. Per-route auth via <code>getAuth()</code> in loaders. Unauthenticated bookmark attempts redirect to <code>/sign-in?redirect_url=...</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: CI/CD PIPELINE -->
+  <div class="slide">
+    <div class="label">DevOps</div>
+    <h2>CI/CD Pipeline</h2>
+    <svg viewBox="0 0 920 280" style="width:100%;max-width:1060px">
+      <!-- Stage boxes -->
+      <!-- 1: Dev -->
+      <rect x="10" y="80" width="120" height="120" rx="10" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5"/>
+      <text x="70" y="108" fill="var(--muted)" font-size="12" font-weight="600" text-anchor="middle">Developer</text>
+      <text x="70" y="128" fill="var(--dim)" font-size="10" text-anchor="middle">feature branch</text>
+      <text x="70" y="148" fill="var(--dim)" font-size="10" text-anchor="middle">pull request</text>
+      <text x="70" y="168" fill="var(--dim)" font-size="10" text-anchor="middle">1 approval required</text>
+
+      <line x1="130" y1="140" x2="160" y2="140" stroke="var(--amber)" stroke-width="2" marker-end="url(#arr3)"/>
+      <defs><marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--amber)"/></marker></defs>
+
+      <!-- 2: CI -->
+      <rect x="160" y="50" width="150" height="180" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+      <text x="235" y="76" fill="var(--green)" font-size="12" font-weight="600" text-anchor="middle">CI · GitHub Actions</text>
+      <rect x="172" y="86" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="235" y="103" fill="var(--text)" font-size="10" text-anchor="middle">Biome lint / format</text>
+      <rect x="172" y="116" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="235" y="133" fill="var(--text)" font-size="10" text-anchor="middle">TypeScript typecheck</text>
+      <rect x="172" y="146" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="235" y="163" fill="var(--text)" font-size="10" text-anchor="middle">Vitest unit tests</text>
+      <rect x="172" y="176" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="235" y="193" fill="var(--text)" font-size="10" text-anchor="middle">Playwright E2E (Docker)</text>
+      <text x="235" y="222" fill="var(--dim)" font-size="9" text-anchor="middle">timeout: 15min</text>
+
+      <line x1="310" y1="140" x2="340" y2="140" stroke="var(--amber)" stroke-width="2" marker-end="url(#arr3)"/>
+
+      <!-- 3: Docker Build -->
+      <rect x="340" y="50" width="150" height="180" rx="10" fill="rgba(96,165,250,0.06)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+      <text x="415" y="76" fill="var(--blue)" font-size="12" font-weight="600" text-anchor="middle">Docker Build</text>
+      <text x="415" y="98" fill="var(--dim)" font-size="10" text-anchor="middle">multi-stage Dockerfile</text>
+      <rect x="352" y="108" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="415" y="125" fill="var(--text)" font-size="10" text-anchor="middle">pnpm build</text>
+      <rect x="352" y="138" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="415" y="155" fill="var(--text)" font-size="10" text-anchor="middle">pnpm deploy (prod)</text>
+      <rect x="352" y="168" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="415" y="185" fill="var(--text)" font-size="10" text-anchor="middle">Prisma generate</text>
+      <text x="415" y="222" fill="var(--dim)" font-size="9" text-anchor="middle">provenance: false (Railway compat)</text>
+
+      <line x1="490" y1="140" x2="520" y2="140" stroke="var(--amber)" stroke-width="2" marker-end="url(#arr3)"/>
+
+      <!-- 4: GHCR -->
+      <rect x="520" y="100" width="120" height="80" rx="10" fill="rgba(167,139,250,0.06)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+      <text x="580" y="128" fill="var(--purple)" font-size="12" font-weight="600" text-anchor="middle">GHCR</text>
+      <text x="580" y="150" fill="var(--dim)" font-size="10" text-anchor="middle">ghcr.io/jarvis-jupiter</text>
+      <text x="580" y="166" fill="var(--dim)" font-size="10" text-anchor="middle">tagged with SHA</text>
+
+      <line x1="640" y1="140" x2="670" y2="140" stroke="var(--amber)" stroke-width="2" marker-end="url(#arr3)"/>
+
+      <!-- 5: Railway -->
+      <rect x="670" y="50" width="150" height="180" rx="10" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/>
+      <text x="745" y="76" fill="var(--amber)" font-size="12" font-weight="600" text-anchor="middle">Railway Deploy</text>
+      <text x="745" y="98" fill="var(--dim)" font-size="10" text-anchor="middle">serviceInstanceUpdate</text>
+      <text x="745" y="114" fill="var(--dim)" font-size="10" text-anchor="middle">serviceInstanceDeployV2</text>
+      <rect x="682" y="126" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="745" y="143" fill="var(--text)" font-size="10" text-anchor="middle">prisma migrate deploy</text>
+      <rect x="682" y="156" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="745" y="173" fill="var(--text)" font-size="10" text-anchor="middle">node dist/index.js</text>
+      <rect x="682" y="186" width="126" height="24" rx="5" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+      <text x="745" y="203" fill="var(--text)" font-size="10" text-anchor="middle">HEALTHCHECK /health</text>
+
+      <!-- Line from GHCR to Railway -->
+
+      <!-- Labels at top -->
+      <text x="70" y="36" fill="var(--dim)" font-size="10" text-anchor="middle">①</text>
+      <text x="235" y="36" fill="var(--dim)" font-size="10" text-anchor="middle">②</text>
+      <text x="415" y="36" fill="var(--dim)" font-size="10" text-anchor="middle">③</text>
+      <text x="580" y="80" fill="var(--dim)" font-size="10" text-anchor="middle">④</text>
+      <text x="745" y="36" fill="var(--dim)" font-size="10" text-anchor="middle">⑤</text>
+
+      <!-- Bottom: live URLs -->
+      <rect x="490" y="248" width="290" height="26" rx="6" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+      <text x="635" y="265" fill="var(--green)" font-size="11" text-anchor="middle">🌐 web-production-5303a.up.railway.app</text>
+      <rect x="160" y="248" width="290" height="26" rx="6" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+      <text x="305" y="265" fill="var(--green)" font-size="11" text-anchor="middle">🔌 api-production-5e1a.up.railway.app</text>
+    </svg>
+  </div>
+
+  <!-- SLIDE 9: DOCKER ARCHITECTURE -->
+  <div class="slide">
+    <div class="label">Infrastructure</div>
+    <h2>Docker Multi-Stage Build</h2>
+    <div class="two-col">
+      <div>
+        <svg viewBox="0 0 400 400" class="diagram">
+          <!-- Build stage -->
+          <rect x="10" y="10" width="380" height="170" rx="10" fill="rgba(96,165,250,0.04)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <text x="200" y="34" fill="var(--blue)" font-size="12" font-weight="700" text-anchor="middle">① BUILD STAGE — node:20-slim</text>
+          <rect x="22" y="44" width="170" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="107" y="63" fill="var(--text)" font-size="10" text-anchor="middle">COPY full monorepo</text>
+          <rect x="200" y="44" width="178" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="289" y="63" fill="var(--text)" font-size="10" text-anchor="middle">pnpm install (all deps)</text>
+          <rect x="22" y="80" width="170" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="107" y="99" fill="var(--text)" font-size="10" text-anchor="middle">pnpm turbo build</text>
+          <rect x="200" y="80" width="178" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="289" y="99" fill="var(--text)" font-size="10" text-anchor="middle">prisma generate</text>
+          <rect x="22" y="116" width="170" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="107" y="135" fill="var(--text)" font-size="10" text-anchor="middle">pnpm deploy --prod</text>
+          <rect x="200" y="116" width="178" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="289" y="135" fill="var(--text)" font-size="10" text-anchor="middle">cp dist/ + .prisma/client</text>
+          <text x="200" y="168" fill="var(--dim)" font-size="10" text-anchor="middle">All build tools left behind — not shipped</text>
+
+          <!-- Arrow -->
+          <line x1="200" y1="180" x2="200" y2="214" stroke="var(--amber)" stroke-width="2" marker-end="url(#arr4)"/>
+          <defs><marker id="arr4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--amber)"/></marker></defs>
+          <text x="240" y="200" fill="var(--amber)" font-size="10">COPY /prod/api</text>
+
+          <!-- Runner stage -->
+          <rect x="10" y="214" width="380" height="160" rx="10" fill="rgba(52,211,153,0.04)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+          <text x="200" y="238" fill="var(--green)" font-size="12" font-weight="700" text-anchor="middle">② RUNNER STAGE — node:20-slim</text>
+          <rect x="22" y="248" width="170" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="107" y="267" fill="var(--text)" font-size="10" text-anchor="middle">USER nodeuser (non-root)</text>
+          <rect x="200" y="248" width="178" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="289" y="267" fill="var(--text)" font-size="10" text-anchor="middle">apt-get openssl only</text>
+          <rect x="22" y="284" width="170" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="107" y="303" fill="var(--text)" font-size="10" text-anchor="middle">HEALTHCHECK /health</text>
+          <rect x="200" y="284" width="178" height="28" rx="6" fill="var(--surface2)" stroke="var(--border)" stroke-width="1"/>
+          <text x="289" y="303" fill="var(--text)" font-size="10" text-anchor="middle">STOPSIGNAL SIGTERM</text>
+          <rect x="110" y="320" width="180" height="28" rx="6" fill="rgba(245,158,11,0.1)" stroke="var(--amber)" stroke-width="1"/>
+          <text x="200" y="339" fill="var(--amber)" font-size="10" text-anchor="middle">CMD: entrypoint.sh</text>
+          <text x="200" y="364" fill="var(--dim)" font-size="10" text-anchor="middle">migrate deploy → exec node dist/index.js</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">Security & Reliability</div>
+        <div class="step">
+          <div class="step-num">🔒</div>
+          <div class="step-content">
+            <h4>Non-root user</h4>
+            <p>Container runs as <code>nodeuser</code> — not root. Industry-standard security practice to limit blast radius of any container escape.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">❤️</div>
+          <div class="step-content">
+            <h4>HEALTHCHECK</h4>
+            <p>Docker checks <code>/health</code> every 30s. Railway uses the container health status to determine when a deployment is ready, and restarts crashed containers automatically.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🛑</div>
+          <div class="step-content">
+            <h4>Graceful shutdown</h4>
+            <p><code>SIGTERM</code> handler calls <code>server.close()</code> then <code>prisma.$disconnect()</code>. Existing requests finish before the process exits. 10s forced exit timeout.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">📦</div>
+          <div class="step-content">
+            <h4>pnpm deploy isolation</h4>
+            <p><code>pnpm deploy --prod</code> creates a clean deployment dir with only production dependencies and a flat node_modules — no workspace symlinks in production.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: USE CASES -->
+  <div class="slide">
+    <div class="label">Use Cases</div>
+    <h2>User Journeys</h2>
+    <div class="grid grid-2" style="max-width:1060px">
+
+      <div class="card">
+        <h3>🔍 Search for Books</h3>
+        <div style="margin-top:12px">
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">User enters query</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">GET /search?q=...</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Remix loader (SSR)</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">API /api/books/search</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px">
+            <span class="flow-box" style="font-size:12px">Google Books API</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px; color:var(--green)">Results rendered</span>
+          </div>
+        </div>
+        <div class="tag-list">
+          <span class="badge badge-blue">Filters: sort / lang / type</span>
+          <span class="badge badge-green">Pagination</span>
+          <span class="badge badge-amber">Cache-Control 5min</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🔖 Bookmark a Book</h3>
+        <div style="margin-top:12px">
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Click 🔖 Bookmark</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">useFetcher POST</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+            <span style="font-size:11px; color:var(--dim)">if not signed in</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px; color:var(--amber)">→ /sign-in?redirect_url</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+            <span style="font-size:11px; color:var(--dim)">if signed in</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px">
+            <span class="flow-box" style="font-size:12px">POST /api/bookmarks</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px; color:var(--green)">✓ Bookmarked</span>
+          </div>
+        </div>
+        <div class="tag-list">
+          <span class="badge badge-purple">Optimistic UI update</span>
+          <span class="badge badge-amber">409 dedup handled</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📖 View Book Detail</h3>
+        <div style="margin-top:12px">
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Click book title</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">GET /books/:id</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Remix loader</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">GET /api/books/:id</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px">
+            <span class="flow-box" style="font-size:12px; color:var(--green)">Cover, description, meta</span>
+          </div>
+        </div>
+        <div class="tag-list">
+          <span class="badge badge-blue">Open Graph meta tags</span>
+          <span class="badge badge-green">Loading opacity state</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>👤 User Sign Up & Auth</h3>
+        <div style="margin-top:12px">
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Clerk /sign-up</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">user.created webhook</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-arrow" style="margin-left:8px">↓</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px; margin-bottom:6px">
+            <span class="flow-box" style="font-size:12px">Svix verify</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-box" style="font-size:12px">DB user upsert</span>
+          </div>
+          <div class="flow-row" style="justify-content:flex-start; gap:6px">
+            <span class="flow-box" style="font-size:12px; color:var(--green)">JWT → DB userId resolved</span>
+          </div>
+        </div>
+        <div class="tag-list">
+          <span class="badge badge-red">Svix signature verify</span>
+          <span class="badge badge-purple">Clerk JWT → DB CUID</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: TESTING STRATEGY -->
+  <div class="slide">
+    <div class="label">Quality Assurance</div>
+    <h2>Testing Strategy</h2>
+    <div class="two-col">
+      <div>
+        <svg viewBox="0 0 400 320" class="diagram">
+          <!-- Pyramid -->
+          <!-- E2E top -->
+          <polygon points="200,20 280,120 120,120" fill="rgba(248,113,113,0.12)" stroke="rgba(248,113,113,0.5)" stroke-width="1.5"/>
+          <text x="200" y="75" fill="var(--red)" font-size="11" font-weight="600" text-anchor="middle">E2E Tests</text>
+          <text x="200" y="92" fill="var(--dim)" font-size="10" text-anchor="middle">60 Playwright tests</text>
+          <text x="200" y="106" fill="var(--dim)" font-size="10" text-anchor="middle">Docker Compose stack</text>
+          <!-- Integration middle -->
+          <polygon points="120,120 280,120 320,200 80,200" fill="rgba(245,158,11,0.08)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+          <text x="200" y="157" fill="var(--amber)" font-size="11" font-weight="600" text-anchor="middle">Integration Tests</text>
+          <text x="200" y="174" fill="var(--dim)" font-size="10" text-anchor="middle">HTTP router tests, DB adapters</text>
+          <text x="200" y="190" fill="var(--dim)" font-size="10" text-anchor="middle">Mocked dependencies</text>
+          <!-- Unit base -->
+          <polygon points="80,200 320,200 370,290 30,290" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+          <text x="200" y="235" fill="var(--green)" font-size="11" font-weight="600" text-anchor="middle">Unit Tests</text>
+          <text x="200" y="254" fill="var(--dim)" font-size="10" text-anchor="middle">Domain use cases, pure functions</text>
+          <text x="200" y="270" fill="var(--dim)" font-size="10" text-anchor="middle">Result monad paths, Zod schemas</text>
+          <text x="200" y="286" fill="var(--dim)" font-size="9" text-anchor="middle">Fastest · No DB · No network</text>
+
+          <!-- Count badges -->
+          <rect x="310" y="58" width="75" height="22" rx="6" fill="rgba(248,113,113,0.12)" stroke="rgba(248,113,113,0.4)" stroke-width="1"/>
+          <text x="347" y="73" fill="var(--red)" font-size="10" font-weight="600" text-anchor="middle">60 tests</text>
+          <rect x="330" y="148" width="62" height="22" rx="6" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.4)" stroke-width="1"/>
+          <text x="361" y="163" fill="var(--amber)" font-size="10" font-weight="600" text-anchor="middle">~20 tests</text>
+          <rect x="340" y="232" width="50" height="22" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1"/>
+          <text x="365" y="247" fill="var(--green)" font-size="10" font-weight="600" text-anchor="middle">41 tests</text>
+        </svg>
+      </div>
+      <div>
+        <div class="section-title">E2E: Page Object Model</div>
+        <div class="step">
+          <div class="step-num">📄</div>
+          <div class="step-content">
+            <h4>Page Objects</h4>
+            <p><code>HomePage</code>, <code>SearchPage</code>, <code>BookDetailPage</code> encapsulate locator logic. Tests read like user stories, not CSS selector queries.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔧</div>
+          <div class="step-content">
+            <h4>Fixtures</h4>
+            <p>Playwright fixtures inject page objects into tests. <code>test.extend()</code> provides typed <code>searchPage</code>, <code>bookDetailPage</code> per test.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🐳</div>
+          <div class="step-content">
+            <h4>Docker Compose in CI</h4>
+            <p>E2E tests run against a real Docker Compose stack (postgres + api + web) — same images deployed to production. Catches Docker-specific bugs before they hit Railway.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔄</div>
+          <div class="step-content">
+            <h4>2 retries on CI</h4>
+            <p>Flaky network-dependent tests (Google Books API latency) get 2 automatic retries on CI. Stable tests pass first attempt.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12: SUMMARY -->
+  <div class="slide">
+    <div class="label">Summary</div>
+    <h1>What We Built</h1>
+    <div class="grid grid-3" style="max-width:1100px; margin-top:32px">
+      <div class="card" style="text-align:center">
+        <span class="icon" style="display:block">🏗️</span>
+        <h3 style="text-align:center; margin-bottom:8px">Architecture</h3>
+        <p style="font-size:13px">Hexagonal architecture with dependency inversion. Domain core is framework-agnostic. Adapters are swappable. Fully type-safe end to end.</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <span class="icon" style="display:block">🚀</span>
+        <h3 style="text-align:center; margin-bottom:8px">Production Ready</h3>
+        <p style="font-size:13px">Security headers, rate limiting, graceful shutdown, health checks, DB migrations, CI/CD pipeline, Docker, Railway deployment.</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <span class="icon" style="display:block">🧪</span>
+        <h3 style="text-align:center; margin-bottom:8px">Test Coverage</h3>
+        <p style="font-size:13px">121 tests across unit, integration, and E2E layers. TDD throughout. Page Object Model. Docker Compose for realistic E2E.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:28px">
+      <span class="badge badge-amber">Remix v2 SSR</span>
+      <span class="badge badge-blue">Express + Helmet</span>
+      <span class="badge badge-green">PostgreSQL + Prisma</span>
+      <span class="badge badge-purple">Clerk Auth</span>
+      <span class="badge badge-amber">Google Books API</span>
+      <span class="badge badge-blue">Docker multi-stage</span>
+      <span class="badge badge-green">GitHub Actions</span>
+      <span class="badge badge-purple">Railway</span>
+      <span class="badge badge-amber">Turborepo</span>
+      <span class="badge badge-blue">Playwright POM</span>
+      <span class="badge badge-green">Vitest TDD</span>
+      <span class="badge badge-red">Result&lt;T&gt; monad</span>
+    </div>
+    <p style="margin-top:28px; font-size:14px; color:var(--dim)">
+      🌐 <span style="color:var(--amber)">web-production-5303a.up.railway.app</span>
+      &nbsp;·&nbsp;
+      🔌 <span style="color:var(--amber)">api-production-5e1a.up.railway.app</span>
+      &nbsp;·&nbsp;
+      💻 <span style="color:var(--amber)">github.com/jarvis-jupiter/book-explorer</span>
+    </p>
+  </div>
+
+</div>
+
+<!-- NAVIGATION -->
+<nav class="nav">
+  <button id="prev" title="Previous">←</button>
+  <span class="counter" id="counter">1 / 12</span>
+  <button id="next" title="Next">→</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let current = 0;
+
+  function go(n) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(total - 1, n));
+    slides[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+    document.getElementById('progress').style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.getElementById('prev').addEventListener('click', () => go(current - 1));
+  document.getElementById('next').addEventListener('click', () => go(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') go(current + 1);
+    if (e.key === 'ArrowLeft') go(current - 1);
+  });
+
+  go(0);
+</script>
+</body>
+</html>
