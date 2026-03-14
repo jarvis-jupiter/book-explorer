@@ -2,12 +2,11 @@ import { CreateBookmarkInputSchema } from "@book-explorer/domain";
 import { Router } from "express";
 import type { Request, Response } from "express";
 import type { BookmarkRepositoryPort } from "../../../ports/bookmark-repository.port.js";
-import type { UserRepositoryPort } from "../../../ports/user-repository.port.js";
 import type { AddBookmarkUseCase } from "../../../use-cases/add-bookmark.use-case.js";
 import type { RemoveBookmarkUseCase } from "../../../use-cases/remove-bookmark.use-case.js";
 import { parseRequest } from "../../parse-request.js";
 import { errorResponse } from "../error-response.js";
-import { createRequireAuth } from "../middleware/auth.middleware.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
 // Body schema — userId comes from auth middleware, not from body
@@ -29,11 +28,10 @@ export const createBookmarksRouter = (
   addBookmarkUseCase: AddBookmarkUseCase,
   removeBookmarkUseCase: RemoveBookmarkUseCase,
   bookmarkRepository: BookmarkRepositoryPort,
-  userRepository: UserRepositoryPort,
 ): Router => {
   const router = Router();
 
-  router.use(createRequireAuth(userRepository));
+  router.use(requireAuth);
 
   router.get("/", async (req: Request, res: Response): Promise<void> => {
     const userId = (req as AuthenticatedRequest).userId;

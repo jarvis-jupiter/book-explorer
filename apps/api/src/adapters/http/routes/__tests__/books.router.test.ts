@@ -1,15 +1,20 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ok } from "../../../../domain/result.js";
 import type { SearchBooksUseCase } from "../../../../use-cases/search-books.use-case.js";
 import { createBooksRouter } from "../books.router.js";
 
+const TEST_SECRET = "test-secret";
+const makeToken = (userId = "user-1") => jwt.sign({ userId }, TEST_SECRET, { expiresIn: "1h" });
+
 const makeSearchUseCase = (): SearchBooksUseCase => ({
   execute: vi.fn().mockResolvedValue(ok({ books: [], totalItems: 0, page: 1, pageSize: 10 })),
 });
 
 const makeApp = () => {
+  process.env["JWT_SECRET"] = TEST_SECRET;
   const app = express();
   app.use(express.json());
   app.use("/api/books", createBooksRouter(makeSearchUseCase()));
@@ -46,9 +51,12 @@ describe("GET /api/books/:id", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns 200 with mapped book shape", async () => {
+  it("returns 200 with mapped book shape when authenticated", async () => {
     const app = makeApp();
-    const res = await request(app).get("/api/books/test-book-id");
+    const token = makeToken();
+    const res = await request(app)
+      .get("/api/books/test-book-id")
+      .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -67,9 +75,18 @@ describe("GET /api/books/:id", () => {
 
   it("upgrades http cover URL to https", async () => {
     const app = makeApp();
-    const res = await request(app).get("/api/books/test-book-id");
+    const token = makeToken();
+    const res = await request(app)
+      .get("/api/books/test-book-id")
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.coverUrl).toBe("https://books.google.com/cover.jpg");
+  });
+
+  it("returns 401 without token", async () => {
+    const app = makeApp();
+    const res = await request(app).get("/api/books/test-book-id");
+    expect(res.status).toBe(401);
   });
 
   it("returns 404 when Google Books API returns non-ok", async () => {
@@ -81,7 +98,10 @@ describe("GET /api/books/:id", () => {
       }),
     );
     const app = makeApp();
-    const res = await request(app).get("/api/books/nonexistent-id");
+    const token = makeToken();
+    const res = await request(app)
+      .get("/api/books/nonexistent-id")
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty("error");
   });

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { SearchBooksUseCase } from "../../../use-cases/search-books.use-case.js";
 import { parseRequest } from "../../parse-request.js";
 import { errorResponse } from "../error-response.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 
 // HTTP query schema — uses `q` as the URL param, coerces page/pageSize from strings
 const SearchBooksHttpQuerySchema = z.object({
@@ -29,6 +30,9 @@ const errorCode = (kind: string): string => {
 
 export const createBooksRouter = (searchBooksUseCase: SearchBooksUseCase): Router => {
   const router = Router();
+
+  // All book endpoints require authentication (AC 9a)
+  router.use(requireAuth);
 
   router.get("/search", async (req: Request, res: Response): Promise<void> => {
     const parsed = parseRequest(SearchBooksHttpQuerySchema, req.query);

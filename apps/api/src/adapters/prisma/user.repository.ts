@@ -1,59 +1,36 @@
-import type { PrismaClient } from "@book-explorer/db";
-import type { User } from "@book-explorer/domain";
-import { internalError, notFound } from "../../domain/errors.js";
-import { err, ok } from "../../domain/result.js";
-import type { UpsertUserInput, UserRepositoryPort } from "../../ports/user-repository.port.js";
+// PrismaUserRepository — outbound adapter implementing UserRepositoryPort.
+// This is the ONLY file in the codebase that imports Prisma client for user operations.
+// Use cases receive this via dependency injection and never import Prisma directly.
+
+import type { PrismaClient } from "@prisma/client";
+import type { User } from "../../domain/entities/User.js";
+import type { UserRepositoryPort } from "../../ports/user-repository.port.js";
 
 const toUser = (row: {
   id: string;
-  clerkId: string;
   email: string;
-  displayName: string | null;
+  passwordHash: string;
   createdAt: Date;
 }): User => ({
   id: row.id,
-  clerkId: row.clerkId,
   email: row.email,
-  displayName: row.displayName,
+  passwordHash: row.passwordHash,
   createdAt: row.createdAt,
 });
 
 export const createPrismaUserRepository = (prisma: PrismaClient): UserRepositoryPort => ({
-  upsertByClerkId: async (input: UpsertUserInput) => {
-    try {
-      const row = await prisma.user.upsert({
-        where: { clerkId: input.clerkId },
-        create: {
-          clerkId: input.clerkId,
-          email: input.email,
-          displayName: input.displayName,
-        },
-        update: {
-          email: input.email,
-          displayName: input.displayName,
-        },
-      });
-      return ok(toUser(row));
-    } catch (e) {
-      return err(internalError(`Failed to upsert user: ${String(e)}`));
-    }
+  findByEmail: async (email: string): Promise<User | null> => {
+    const row = await prisma.user.findUnique({ where: { email } });
+    return row ? toUser(row) : null;
   },
 
-  findByClerkId: async (clerkId: string) => {
-    try {
-      const row = await prisma.user.findUnique({ where: { clerkId } });
-      return ok(row ? toUser(row) : null);
-    } catch (e) {
-      return err(internalError(`Failed to find user: ${String(e)}`));
-    }
+  findById: async (id: string): Promise<User | null> => {
+    const row = await prisma.user.findUnique({ where: { id } });
+    return row ? toUser(row) : null;
   },
 
-  deleteByClerkId: async (clerkId: string) => {
-    try {
-      await prisma.user.delete({ where: { clerkId } });
-      return ok(undefined);
-    } catch {
-      return err(notFound(`User with clerkId ${clerkId} not found`));
-    }
+  create: async (email: string, passwordHash: string): Promise<User> => {
+    const row = await prisma.user.create({ data: { email, passwordHash } });
+    return toUser(row);
   },
 });

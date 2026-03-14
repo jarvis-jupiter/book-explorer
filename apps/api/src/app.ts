@@ -5,21 +5,23 @@ import type { ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import "express-async-errors";
+import { createAuthRouter } from "./adapters/http/routes/auth.router.js";
 import { createBookmarksRouter } from "./adapters/http/routes/bookmarks.router.js";
 import { createBooksRouter } from "./adapters/http/routes/books.router.js";
-import { createWebhooksRouter } from "./adapters/http/routes/webhooks.router.js";
 import type { BookmarkRepositoryPort } from "./ports/bookmark-repository.port.js";
-import type { UserRepositoryPort } from "./ports/user-repository.port.js";
+import type { LoginUserUseCase } from "./use-cases/login-user.use-case.js";
+import type { RegisterUserUseCase } from "./use-cases/register-user.use-case.js";
 import type { AddBookmarkUseCase } from "./use-cases/add-bookmark.use-case.js";
 import type { RemoveBookmarkUseCase } from "./use-cases/remove-bookmark.use-case.js";
 import type { SearchBooksUseCase } from "./use-cases/search-books.use-case.js";
 
 type AppDependencies = {
+  readonly registerUserUseCase: RegisterUserUseCase;
+  readonly loginUserUseCase: LoginUserUseCase;
   readonly searchBooksUseCase: SearchBooksUseCase;
   readonly addBookmarkUseCase: AddBookmarkUseCase;
   readonly removeBookmarkUseCase: RemoveBookmarkUseCase;
   readonly bookmarkRepository: BookmarkRepositoryPort;
-  readonly userRepository: UserRepositoryPort;
 };
 
 export const createApp = (deps: AppDependencies): Express => {
@@ -30,6 +32,12 @@ export const createApp = (deps: AppDependencies): Express => {
 
   // Gzip all responses
   app.use(compression());
+
+  // CORS — allow Remix frontend origin
+  app.use(cors({
+    origin: process.env["FRONTEND_URL"] ?? "http://localhost:3000",
+    credentials: true,
+  }));
 
   // Rate limiters — disabled in test/CI to prevent E2E flakiness
   const isTest = process.env["NODE_ENV"] === "test" || process.env["CI"] === "true";
@@ -53,17 +61,16 @@ export const createApp = (deps: AppDependencies): Express => {
     app.use("/api/books/search", searchLimiter);
   }
 
-  app.use(cors());
-
-  // Webhooks route uses raw body — must be mounted BEFORE express.json()
-  app.use("/api/webhooks", createWebhooksRouter(deps.userRepository));
-
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
+  // Auth routes — no JWT required (these issue the token)
+  app.use("/api/auth", createAuthRouter(deps.registerUserUseCase, deps.loginUserUseCase));
+
+  // Protected routes — requireAuth middleware applied inside each router
   app.use("/api/books", createBooksRouter(deps.searchBooksUseCase));
   app.use(
     "/api/bookmarks",
@@ -71,7 +78,6 @@ export const createApp = (deps: AppDependencies): Express => {
       deps.addBookmarkUseCase,
       deps.removeBookmarkUseCase,
       deps.bookmarkRepository,
-      deps.userRepository,
     ),
   );
 

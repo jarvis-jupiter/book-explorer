@@ -8,6 +8,9 @@ import {
   useNavigation,
   useRouteError,
 } from "@remix-run/react";
+import { requireUserSession } from "../session.server.js";
+
+const API_BASE_URL = process.env["API_BASE_URL"] ?? "http://localhost:3001";
 
 type Book = {
   id: string;
@@ -22,11 +25,14 @@ type Book = {
   averageRating: number | null;
 };
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
+  // AC 9a: unauthenticated access → redirect to /login
+  const session = await requireUserSession(request);
+
   const id = params["id"];
-  const response = await fetch(
-    `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/books/${id}`,
-  );
+  const response = await fetch(`${API_BASE_URL}/api/books/${id}`, {
+    headers: { Authorization: `Bearer ${session.token}` },
+  });
   if (!response.ok) throw new Response("Book not found", { status: 404 });
   const book = (await response.json()) as Book;
   return json({ book });
@@ -125,7 +131,7 @@ export default function BookDetailPage() {
         </div>
       )}
 
-      {/* Metadata grid */}
+      {/* Metadata grid — only render fields that have values (AC 7b: graceful omission) */}
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
         {book.pageCount && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
