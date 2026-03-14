@@ -1,120 +1,60 @@
-import type { NextFunction, Request, Response } from "express";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRequireAuth } from "../auth.middleware.js";
+// Tests for requireAuth middleware using custom JWT.
 
-vi.mock("@clerk/backend", () => ({
-  verifyToken: vi.fn(),
-}));
+import jwt from "jsonwebtoken";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
+import express from "express";
+import { requireAuth } from "../auth.middleware.js";
+import type { AuthenticatedRequest } from "../auth.middleware.js";
 
-import { verifyToken } from "@clerk/backend";
+const SECRET = "test-secret";
 
-const makeMockUserRepo = () => ({
-  upsertByClerkId: vi.fn().mockResolvedValue({
-    ok: true,
-    value: {
-      id: "cuid_db_id",
-      clerkId: "user_clerk123",
-      email: "t@t.com",
-      displayName: null,
-      createdAt: new Date(),
-    },
-  }),
-  findByClerkId: vi.fn(),
-  deleteByClerkId: vi.fn(),
-});
-
-const makeReqResMock = (token?: string) => {
-  const req = {
-    headers: { authorization: token ? `Bearer ${token}` : undefined },
-  } as unknown as Request;
-  const res = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-  } as unknown as Response;
-  const next = vi.fn() as NextFunction;
-  return { req, res, next };
+const makeApp = () => {
+  process.env["JWT_SECRET"] = SECRET;
+  const app = express();
+  app.use(express.json());
+  app.get("/protected", requireAuth, (req, res) => {
+    res.json({ userId: (req as AuthenticatedRequest).userId });
+  });
+  return app;
 };
 
-describe("createRequireAuth", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+const makeToken = (userId: string) => jwt.sign({ userId }, SECRET, { expiresIn: "1h" });
+
+describe("requireAuth middleware", () => {
+  it("allows requests with a valid JWT", async () => {
+    const app = makeApp();
+    const token = makeToken("user-123");
+
+    const res = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.userId).toBe("user-123");
   });
 
-  it("returns 401 when no token is provided", async () => {
-    const userRepo = makeMockUserRepo();
-    const middleware = createRequireAuth(userRepo);
-    const { req, res, next } = makeReqResMock();
-
-    await middleware(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
+  it("rejects requests with no Authorization header", async () => {
+    const app = makeApp();
+    const res = await request(app).get("/protected");
+    expect(res.status).toBe(401);
   });
 
-  it("attaches DB userId (CUID) to req after JWT verification", async () => {
-    const userRepo = makeMockUserRepo();
-    const middleware = createRequireAuth(userRepo);
-    const { req, res, next } = makeReqResMock("valid_token");
-
-    (verifyToken as ReturnType<typeof vi.fn>).mockResolvedValue({
-      sub: "user_clerk123",
-      email: "t@t.com",
-    });
-
-    await middleware(req, res, next);
-
-    // The DB userId (CUID) should be attached, NOT the Clerk ID
-    expect((req as Request & { userId: string }).userId).toBe("cuid_db_id");
-    expect(next).toHaveBeenCalled();
+  it("rejects requests with an invalid token", async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .get("/protected")
+      .set("Authorization", "Bearer invalid.token.here");
+    expect(res.status).toBe(401);
   });
 
-  it("calls upsertByClerkId with the Clerk ID from JWT", async () => {
-    const userRepo = makeMockUserRepo();
-    const middleware = createRequireAuth(userRepo);
-    const { req, res, next } = makeReqResMock("valid_token");
+  it("rejects requests with an expired token", async () => {
+    const app = makeApp();
+    const expired = jwt.sign({ userId: "u1" }, SECRET, { expiresIn: 0 });
 
-    (verifyToken as ReturnType<typeof vi.fn>).mockResolvedValue({
-      sub: "user_clerk123",
-      email: "t@t.com",
-    });
-
-    await middleware(req, res, next);
-
-    expect(userRepo.upsertByClerkId).toHaveBeenCalledWith(
-      expect.objectContaining({ clerkId: "user_clerk123" }),
-    );
-  });
-
-  it("returns 401 when token verification fails", async () => {
-    const userRepo = makeMockUserRepo();
-    const middleware = createRequireAuth(userRepo);
-    const { req, res, next } = makeReqResMock("invalid_token");
-
-    (verifyToken as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("invalid"));
-
-    await middleware(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  it("returns 500 when user upsert fails", async () => {
-    const userRepo = {
-      ...makeMockUserRepo(),
-      upsertByClerkId: vi
-        .fn()
-        .mockResolvedValue({ ok: false, error: { kind: "InternalError", message: "DB down" } }),
-    };
-    const middleware = createRequireAuth(userRepo);
-    const { req, res, next } = makeReqResMock("valid_token");
-
-    (verifyToken as ReturnType<typeof vi.fn>).mockResolvedValue({
-      sub: "user_clerk123",
-    });
-
-    await middleware(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(next).not.toHaveBeenCalled();
+    const res = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${expired}`);
+    expect(res.status).toBe(401);
   });
 });

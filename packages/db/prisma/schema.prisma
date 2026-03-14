@@ -12,17 +12,14 @@ datasource db {
 }
 
 model User {
-  id          String     @id @default(cuid())
-  clerkId     String     @unique
-  email       String     @unique
-  displayName String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  bookmarks   Bookmark[]
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  bookmarks    Bookmark[]
 
-  // clerkId is already covered by the UNIQUE constraint above;
-  // the explicit index helps the query planner on some DB versions.
-  @@index([clerkId])
+  @@index([email])
   @@map("users")
 }
 

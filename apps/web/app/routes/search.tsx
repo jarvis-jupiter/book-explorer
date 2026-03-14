@@ -1,4 +1,3 @@
-import { getAuth } from "@clerk/remix/ssr.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import {
@@ -10,11 +9,11 @@ import {
   useRouteError,
 } from "@remix-run/react";
 import { BookCard } from "../components/BookCard.js";
+import { requireUserSession } from "../session.server.js";
 
 export const meta: MetaFunction = () => [{ title: "Search Books — Book Explorer" }];
 
 // Cache search results for 5 min; serve stale for up to 10 min while revalidating.
-// Google Books data doesn't change second-by-second, so this is safe.
 export const headers = () => ({
   "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
 });
@@ -44,24 +43,21 @@ type LoaderData = {
 };
 
 export async function action(args: ActionFunctionArgs) {
-  const { userId, getToken } = await getAuth(args);
-
-  if (!userId) {
+  const session = await requireUserSession(args.request).catch(() => null);
+  if (!session) {
     const url = new URL(args.request.url);
-    const returnUrl = url.pathname + url.search;
-    return redirect(`/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
+    return redirect(`/login?redirect_url=${encodeURIComponent(url.pathname + url.search)}`);
   }
 
   const formData = await args.request.formData();
   const intent = formData.get("intent");
 
   if (intent === "bookmark") {
-    const token = await getToken();
     const res = await fetch(`${API_BASE_URL}/api/bookmarks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token ?? ""}`,
+        Authorization: `Bearer ${session.token}`,
       },
       body: JSON.stringify({
         bookId: formData.get("bookId"),
@@ -83,7 +79,10 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 export async function loader(args: LoaderFunctionArgs) {
-  const { userId, getToken } = await getAuth(args);
+  // AC 9a: unauthenticated access → redirect to /login
+  const session = await requireUserSession(args.request).catch(() => null);
+  if (!session) return redirect("/login");
+
   const { request } = args;
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? "";
@@ -92,8 +91,8 @@ export async function loader(args: LoaderFunctionArgs) {
   const lang = url.searchParams.get("lang") ?? "";
   const filter = url.searchParams.get("filter") ?? "all";
 
-  // Fetch existing bookmarks when authenticated
-  const bookmarkedIds = userId ? await fetchBookmarkedIds((await getToken()) ?? "") : [];
+  // Fetch existing bookmarks for the authenticated user
+  const bookmarkedIds = await fetchBookmarkedIds(session.token);
 
   if (!query) {
     return json<LoaderData>({
@@ -116,7 +115,9 @@ export async function loader(args: LoaderFunctionArgs) {
   if (lang) apiUrl.searchParams.set("lang", lang);
   if (filter && filter !== "all") apiUrl.searchParams.set("filter", filter);
 
-  const response = await fetch(apiUrl.toString());
+  const response = await fetch(apiUrl.toString(), {
+    headers: { Authorization: `Bearer ${session.token}` },
+  });
 
   if (!response.ok) {
     return json<LoaderData>({
@@ -147,12 +148,16 @@ export async function loader(args: LoaderFunctionArgs) {
 }
 
 const fetchBookmarkedIds = async (token: string): Promise<string[]> => {
-  const bmRes = await fetch(`${API_BASE_URL}/api/bookmarks`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!bmRes.ok) return [];
-  const bms = (await bmRes.json()) as Array<{ bookId: string }>;
-  return bms.map((b) => b.bookId);
+  try {
+    const bmRes = await fetch(`${API_BASE_URL}/api/bookmarks`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!bmRes.ok) return [];
+    const bms = (await bmRes.json()) as Array<{ bookId: string }>;
+    return bms.map((b) => b.bookId);
+  } catch {
+    return [];
+  }
 };
 
 const selectClass =

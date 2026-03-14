@@ -1,10 +1,12 @@
-import { getAuth } from "@clerk/remix/ssr.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, isRouteErrorResponse, useLoaderData, useRouteError } from "@remix-run/react";
 import { Link } from "@remix-run/react";
+import { requireUserSession } from "../session.server.js";
 
 export const meta: MetaFunction = () => [{ title: "My Bookmarks — Book Explorer" }];
+
+const API_BASE_URL = process.env["API_BASE_URL"] ?? "http://localhost:3001";
 
 type Bookmark = {
   id: string;
@@ -15,18 +17,12 @@ type Bookmark = {
   createdAt: string;
 };
 
-export async function loader(args: LoaderFunctionArgs) {
-  const { userId, getToken } = await getAuth(args);
+export async function loader({ request }: LoaderFunctionArgs) {
+  // AC 9a: unauthenticated access → redirect to /login
+  const session = await requireUserSession(request);
 
-  if (!userId) {
-    return redirect("/sign-in");
-  }
-
-  const token = await getToken();
-  const apiUrl = `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/bookmarks`;
-
-  const response = await fetch(apiUrl, {
-    headers: { Authorization: `Bearer ${token ?? ""}` },
+  const response = await fetch(`${API_BASE_URL}/api/bookmarks`, {
+    headers: { Authorization: `Bearer ${session.token}` },
   });
 
   if (!response.ok) {
@@ -37,24 +33,17 @@ export async function loader(args: LoaderFunctionArgs) {
   return json({ bookmarks });
 }
 
-export async function action(args: ActionFunctionArgs) {
-  const { userId, getToken } = await getAuth(args);
+export async function action({ request }: ActionFunctionArgs) {
+  const session = await requireUserSession(request);
 
-  if (!userId) {
-    return redirect("/sign-in");
-  }
-
-  const formData = await args.request.formData();
+  const formData = await request.formData();
   const bookmarkId = formData.get("bookmarkId");
   const intent = formData.get("intent");
 
   if (intent === "remove" && bookmarkId) {
-    const token = await getToken();
-    const apiUrl = `${process.env["API_BASE_URL"] ?? "http://localhost:3001"}/api/bookmarks/${bookmarkId}`;
-
-    await fetch(apiUrl, {
+    await fetch(`${API_BASE_URL}/api/bookmarks/${bookmarkId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token ?? ""}` },
+      headers: { Authorization: `Bearer ${session.token}` },
     });
   }
 
@@ -90,7 +79,7 @@ export default function BookmarksPage() {
                 key={bookmark.id}
                 className="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-amber-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5 flex flex-col gap-3"
               >
-                <div className="flex gap-4">
+                <Link to={`/books/${bookmark.bookId}`} className="flex gap-4">
                   {bookmark.bookCoverUrl ? (
                     <img
                       src={bookmark.bookCoverUrl}
@@ -103,7 +92,7 @@ export default function BookmarksPage() {
                     </div>
                   )}
                   <div className="flex flex-col gap-1 min-w-0">
-                    <h2 className="font-semibold text-slate-100 line-clamp-2">
+                    <h2 className="font-semibold text-slate-100 line-clamp-2 hover:text-amber-400 transition-colors">
                       {bookmark.bookTitle}
                     </h2>
                     {bookmark.bookAuthors.length > 0 && (
@@ -112,7 +101,7 @@ export default function BookmarksPage() {
                       </p>
                     )}
                   </div>
-                </div>
+                </Link>
                 <Form method="post">
                   <input type="hidden" name="intent" value="remove" />
                   <input type="hidden" name="bookmarkId" value={bookmark.id} />

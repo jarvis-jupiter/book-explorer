@@ -1,16 +1,18 @@
-import { ClerkApp, SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/remix";
-import { rootAuthLoader } from "@clerk/remix/ssr.server";
 import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import {
+  Form,
+  Link,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLoaderData,
   useRouteError,
 } from "@remix-run/react";
-import { Link } from "@remix-run/react";
+import { getUserSession } from "./session.server.js";
 import stylesheet from "./tailwind.css?url";
 
 export const links: LinksFunction = () => [
@@ -22,7 +24,10 @@ export const links: LinksFunction = () => [
   },
 ];
 
-export const loader = (args: LoaderFunctionArgs) => rootAuthLoader(args);
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await getUserSession(request);
+  return json({ isAuthenticated: user !== null, userEmail: user?.email ?? null });
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +48,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 function Nav() {
+  const { isAuthenticated, userEmail } = useLoaderData<typeof loader>();
+
   return (
     <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50 sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-6">
@@ -52,39 +59,54 @@ function Nav() {
         >
           📚 Book Explorer
         </Link>
-        <Link
-          to="/search"
-          className="text-slate-400 hover:text-slate-100 transition-colors text-sm font-medium"
-        >
-          Search
-        </Link>
-        <Link
-          to="/bookmarks"
-          className="text-slate-400 hover:text-slate-100 transition-colors text-sm font-medium"
-        >
-          Bookmarks
-        </Link>
+        {isAuthenticated && (
+          <>
+            <Link
+              to="/search"
+              className="text-slate-400 hover:text-slate-100 transition-colors text-sm font-medium"
+            >
+              Search
+            </Link>
+            <Link
+              to="/bookmarks"
+              className="text-slate-400 hover:text-slate-100 transition-colors text-sm font-medium"
+            >
+              Bookmarks
+            </Link>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-3">
-        <SignedOut>
-          <Link
-            to="/sign-up"
-            className="text-sm text-slate-400 hover:text-slate-100 transition-colors"
-          >
-            Sign Up
-          </Link>
-          <SignInButton mode="modal">
-            <button
-              type="button"
+        {!isAuthenticated ? (
+          <>
+            <Link
+              to="/register"
+              className="text-sm text-slate-400 hover:text-slate-100 transition-colors"
+            >
+              Register
+            </Link>
+            <Link
+              to="/login"
               className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-4 py-1.5 text-sm transition-colors"
             >
-              Sign In
-            </button>
-          </SignInButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton afterSignOutUrl="/" />
-        </SignedIn>
+              Log In
+            </Link>
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            {userEmail && (
+              <span className="text-xs text-slate-500 hidden sm:block">{userEmail}</span>
+            )}
+            <Form method="post" action="/logout">
+              <button
+                type="submit"
+                className="text-sm text-slate-400 hover:text-slate-100 border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all"
+              >
+                Logout
+              </button>
+            </Form>
+          </div>
+        )}
       </div>
     </nav>
   );
@@ -123,4 +145,4 @@ export function ErrorBoundary() {
   );
 }
 
-export default ClerkApp(AppContent);
+export default AppContent;

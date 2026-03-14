@@ -1,14 +1,14 @@
-import type { User } from "@book-explorer/domain";
-import type { Result } from "../domain/result.js";
+// UserRepositoryPort — outbound port interface for user persistence.
+// Use cases depend on this interface; Prisma is in the infrastructure layer.
+// No Prisma imports are permitted here.
 
-export type UpsertUserInput = {
-  readonly clerkId: string;
-  readonly email: string;
-  readonly displayName: string | null;
-};
+import type { User } from "../domain/entities/User.js";
 
-export type UserRepositoryPort = {
-  readonly upsertByClerkId: (input: UpsertUserInput) => Promise<Result<User>>;
-  readonly findByClerkId: (clerkId: string) => Promise<Result<User | null>>;
-  readonly deleteByClerkId: (clerkId: string) => Promise<Result<void>>;
-};
+export interface UserRepositoryPort {
+  /** Find a user by email. Returns null if not found. */
+  findByEmail(email: string): Promise<User | null>;
+  /** Find a user by their DB id. Returns null if not found. */
+  findById(id: string): Promise<User | null>;
+  /** Persist a new user record. */
+  create(email: string, passwordHash: string): Promise<User>;
+}

@@ -1,117 +1,84 @@
-import type { PrismaClient } from "@book-explorer/db";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+// Tests for the PrismaUserRepository adapter.
+// Uses a mock PrismaClient — no real DB required.
+
+import { describe, expect, it, vi } from "vitest";
 import { createPrismaUserRepository } from "../user.repository.js";
 
-const mockPrismaUser = {
-  id: "cuid_abc123",
-  clerkId: "user_clerk123",
-  email: "test@example.com",
-  displayName: "Test User",
-  createdAt: new Date("2024-01-01"),
-  updatedAt: new Date("2024-01-01"),
-};
+const makeRow = (overrides: Record<string, unknown> = {}) => ({
+  id: "cuid-1",
+  email: "user@example.com",
+  passwordHash: "$2a$10$hash",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
 
-const mockPrisma = {
-  user: {
-    upsert: vi.fn(),
-    findUnique: vi.fn(),
-    delete: vi.fn(),
-  },
-};
-
-const makeRepo = () => createPrismaUserRepository(mockPrisma as unknown as PrismaClient);
+// Minimal PrismaClient mock
+const makePrisma = (overrides: Record<string, unknown> = {}) =>
+  ({
+    user: {
+      findUnique: vi.fn().mockResolvedValue(makeRow()),
+      create: vi.fn().mockResolvedValue(makeRow()),
+      ...overrides,
+    },
+  }) as unknown as import("@prisma/client").PrismaClient;
 
 describe("createPrismaUserRepository", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  describe("findByEmail", () => {
+    it("returns user when found", async () => {
+      const prisma = makePrisma();
+      const repo = createPrismaUserRepository(prisma);
 
-  describe("upsertByClerkId", () => {
-    it("returns ok with user on success", async () => {
-      mockPrisma.user.upsert.mockResolvedValue(mockPrismaUser);
-      const result = await makeRepo().upsertByClerkId({
-        clerkId: "user_clerk123",
-        email: "test@example.com",
-        displayName: "Test User",
-      });
+      const result = await repo.findByEmail("user@example.com");
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.id).toBe("cuid_abc123");
-        expect(result.value.clerkId).toBe("user_clerk123");
-        expect(result.value.email).toBe("test@example.com");
-      }
-    });
-
-    it("calls prisma.user.upsert with correct args", async () => {
-      mockPrisma.user.upsert.mockResolvedValue(mockPrismaUser);
-      await makeRepo().upsertByClerkId({
-        clerkId: "user_clerk123",
-        email: "test@example.com",
-        displayName: null,
-      });
-
-      expect(mockPrisma.user.upsert).toHaveBeenCalledWith({
-        where: { clerkId: "user_clerk123" },
-        create: { clerkId: "user_clerk123", email: "test@example.com", displayName: null },
-        update: { email: "test@example.com", displayName: null },
+      expect(result).not.toBeNull();
+      expect(result?.email).toBe("user@example.com");
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "user@example.com" },
       });
     });
 
-    it("returns err on database failure", async () => {
-      mockPrisma.user.upsert.mockRejectedValue(new Error("DB error"));
-      const result = await makeRepo().upsertByClerkId({
-        clerkId: "user_clerk123",
-        email: "test@example.com",
-        displayName: null,
-      });
+    it("returns null when not found", async () => {
+      const prisma = makePrisma({ findUnique: vi.fn().mockResolvedValue(null) });
+      const repo = createPrismaUserRepository(prisma);
 
-      expect(result.ok).toBe(false);
+      const result = await repo.findByEmail("nobody@example.com");
+
+      expect(result).toBeNull();
     });
   });
 
-  describe("findByClerkId", () => {
-    it("returns ok with user when found", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockPrismaUser);
-      const result = await makeRepo().findByClerkId("user_clerk123");
+  describe("findById", () => {
+    it("returns user when found", async () => {
+      const prisma = makePrisma();
+      const repo = createPrismaUserRepository(prisma);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value?.id).toBe("cuid_abc123");
-      }
+      const result = await repo.findById("cuid-1");
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe("cuid-1");
     });
 
-    it("returns ok with null when not found", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      const result = await makeRepo().findByClerkId("user_not_found");
+    it("returns null when not found", async () => {
+      const prisma = makePrisma({ findUnique: vi.fn().mockResolvedValue(null) });
+      const repo = createPrismaUserRepository(prisma);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value).toBeNull();
-      }
-    });
-
-    it("returns err on database failure", async () => {
-      mockPrisma.user.findUnique.mockRejectedValue(new Error("DB error"));
-      const result = await makeRepo().findByClerkId("user_clerk123");
-
-      expect(result.ok).toBe(false);
+      const result = await repo.findById("nonexistent");
+      expect(result).toBeNull();
     });
   });
 
-  describe("deleteByClerkId", () => {
-    it("returns ok on success", async () => {
-      mockPrisma.user.delete.mockResolvedValue(mockPrismaUser);
-      const result = await makeRepo().deleteByClerkId("user_clerk123");
+  describe("create", () => {
+    it("persists and returns the new user", async () => {
+      const prisma = makePrisma();
+      const repo = createPrismaUserRepository(prisma);
 
-      expect(result.ok).toBe(true);
-    });
+      const result = await repo.create("new@example.com", "hashed-password");
 
-    it("returns err when user not found", async () => {
-      mockPrisma.user.delete.mockRejectedValue(new Error("Record not found"));
-      const result = await makeRepo().deleteByClerkId("user_not_found");
-
-      expect(result.ok).toBe(false);
+      expect(result.email).toBe("user@example.com");
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: { email: "new@example.com", passwordHash: "hashed-password" },
+      });
     });
   });
 });
