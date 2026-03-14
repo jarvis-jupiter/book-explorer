@@ -3,7 +3,7 @@
 // Attaches the resolved DB userId to req for downstream handlers.
 
 import type { NextFunction, Request, Response } from "express";
-import { decodeToken } from "../../../domain/services/tokenService.js";
+import { decodeToken } from "../../../application/services/tokenService.js";
 
 export type AuthenticatedRequest = Request & {
   userId: string;
@@ -27,8 +27,14 @@ export const requireAuth = async (
     return;
   }
 
+  const jwtSecret = process.env["JWT_SECRET"];
+  if (!jwtSecret) {
+    res.status(500).json({ error: "Server misconfiguration", code: "SERVER_ERROR" });
+    return;
+  }
+
   try {
-    const payload = decodeToken(token);
+    const payload = decodeToken(token, jwtSecret);
     (req as AuthenticatedRequest).userId = payload.userId;
     next();
   } catch {

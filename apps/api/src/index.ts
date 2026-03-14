@@ -31,8 +31,11 @@ const bookmarkRepository = createPrismaBookmarkAdapter(prisma);
 const userRepository = createPrismaUserRepository(prisma);
 
 // ── Use cases (application layer) ────────────────────────────────────────────
-const registerUserUseCase = createRegisterUserUseCase(userRepository);
-const loginUserUseCase = createLoginUserUseCase(userRepository);
+// JWT secret is read here (composition root / infrastructure boundary) and injected
+// into use cases — keeping the application layer free of env-var access.
+const jwtSecret = process.env["JWT_SECRET"] ?? "";
+const registerUserUseCase = createRegisterUserUseCase(userRepository, jwtSecret);
+const loginUserUseCase = createLoginUserUseCase(userRepository, jwtSecret);
 const searchBooksUseCase = createSearchBooksUseCase(bookRepository);
 const addBookmarkUseCase = createAddBookmarkUseCase(bookmarkRepository);
 const removeBookmarkUseCase = createRemoveBookmarkUseCase(bookmarkRepository);

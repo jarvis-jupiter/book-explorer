@@ -15,14 +15,13 @@ const makeHashedUser = async (email: string, plainPassword: string) => ({
 
 describe("loginUser use case", () => {
   it("returns user and token when credentials are valid", async () => {
-    process.env["JWT_SECRET"] = "test-secret";
     const user = await makeHashedUser("user@example.com", "correct-pass");
     const repo: UserRepositoryPort = {
       findByEmail: vi.fn().mockResolvedValue(user),
       findById: vi.fn().mockResolvedValue(user),
       create: vi.fn(),
     };
-    const loginUser = createLoginUserUseCase(repo);
+    const loginUser = createLoginUserUseCase(repo, "test-secret");
 
     const result = await loginUser({ email: "user@example.com", password: "correct-pass" });
 
@@ -37,7 +36,7 @@ describe("loginUser use case", () => {
       findById: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
     };
-    const loginUser = createLoginUserUseCase(repo);
+    const loginUser = createLoginUserUseCase(repo, "test-secret");
 
     await expect(
       loginUser({ email: "nobody@example.com", password: "any" })
@@ -51,7 +50,7 @@ describe("loginUser use case", () => {
       findById: vi.fn().mockResolvedValue(user),
       create: vi.fn(),
     };
-    const loginUser = createLoginUserUseCase(repo);
+    const loginUser = createLoginUserUseCase(repo, "test-secret");
 
     await expect(
       loginUser({ email: "user@example.com", password: "wrong-pass" })
@@ -70,8 +69,8 @@ describe("loginUser use case", () => {
       findById: vi.fn(),
       create: vi.fn(),
     };
-    const loginMissing = createLoginUserUseCase(repoMissing);
-    const loginWrong = createLoginUserUseCase(repoWrongPass);
+    const loginMissing = createLoginUserUseCase(repoMissing, "test-secret");
+    const loginWrong = createLoginUserUseCase(repoWrongPass, "test-secret");
 
     let errMissing: Error | undefined;
     let errWrong: Error | undefined;

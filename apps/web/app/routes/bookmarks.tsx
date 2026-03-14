@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, isRouteErrorResponse, useLoaderData, useRouteError } from "@remix-run/react";
+import { Form, isRouteErrorResponse, useActionData, useLoaderData, useRouteError } from "@remix-run/react";
 import { Link } from "@remix-run/react";
 import { requireUserSession } from "../session.server.js";
 
@@ -41,10 +41,14 @@ export async function action({ request }: ActionFunctionArgs) {
   const intent = formData.get("intent");
 
   if (intent === "remove" && bookmarkId) {
-    await fetch(`${API_BASE_URL}/api/bookmarks/${bookmarkId}`, {
+    const res = await fetch(`${API_BASE_URL}/api/bookmarks/${bookmarkId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.token}` },
     });
+
+    if (!res.ok) {
+      return json({ error: "remove_failed" });
+    }
   }
 
   return redirect("/bookmarks");
@@ -52,6 +56,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function BookmarksPage() {
   const { bookmarks } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ error?: string }>();
 
   return (
     <div>
@@ -60,6 +65,11 @@ export default function BookmarksPage() {
       </div>
 
       <div className="py-8 px-8 max-w-7xl mx-auto">
+        {actionData?.error === "remove_failed" && (
+          <div role="alert" className="mb-6 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            Failed to remove bookmark. Please try again.
+          </div>
+        )}
         {bookmarks.length === 0 ? (
           <div className="text-center mt-24 space-y-4">
             <p className="text-6xl">🔖</p>

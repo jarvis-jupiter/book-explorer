@@ -4,7 +4,7 @@
 
 import { DuplicateEmailError } from "../domain/errors.js";
 import { hashPassword } from "../domain/services/passwordService.js";
-import { issueToken } from "../domain/services/tokenService.js";
+import { issueToken } from "../application/services/tokenService.js";
 import type { User } from "../domain/entities/User.js";
 import type { UserRepositoryPort } from "../ports/user-repository.port.js";
 
@@ -25,14 +25,14 @@ export type RegisterUserUseCase = (input: RegisterInput) => Promise<RegisterOutp
  * Inner function is a pure operation — no direct I/O.
  */
 export const createRegisterUserUseCase =
-  (userRepo: UserRepositoryPort): RegisterUserUseCase =>
+  (userRepo: UserRepositoryPort, jwtSecret: string): RegisterUserUseCase =>
   async ({ email, password }: RegisterInput): Promise<RegisterOutput> => {
     const existing = await userRepo.findByEmail(email);
     if (existing !== null) throw new DuplicateEmailError();
 
     const passwordHash = await hashPassword(password);
     const user = await userRepo.create(email, passwordHash);
-    const token = issueToken(user.id);
+    const token = issueToken(user.id, jwtSecret);
 
     return { user, token };
   };

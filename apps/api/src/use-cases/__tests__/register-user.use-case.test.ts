@@ -34,9 +34,8 @@ const makeRepoWithExistingEmail = (email: string): UserRepositoryPort => ({
 
 describe("registerUser use case", () => {
   it("creates a new user and returns a token when email is not taken", async () => {
-    process.env["JWT_SECRET"] = "test-secret";
     const repo = makeEmptyRepo();
-    const registerUser = createRegisterUserUseCase(repo);
+    const registerUser = createRegisterUserUseCase(repo, "test-secret");
 
     const result = await registerUser({ email: "new@example.com", password: "password123" });
 
@@ -48,7 +47,7 @@ describe("registerUser use case", () => {
 
   it("throws DuplicateEmailError when email already exists", async () => {
     const repo = makeRepoWithExistingEmail("dupe@example.com");
-    const registerUser = createRegisterUserUseCase(repo);
+    const registerUser = createRegisterUserUseCase(repo, "test-secret");
 
     await expect(
       registerUser({ email: "dupe@example.com", password: "password123" })
@@ -59,7 +58,7 @@ describe("registerUser use case", () => {
 
   it("hashes the password before storing (create receives a hash, not plain text)", async () => {
     const repo = makeEmptyRepo();
-    const registerUser = createRegisterUserUseCase(repo);
+    const registerUser = createRegisterUserUseCase(repo, "test-secret");
 
     await registerUser({ email: "a@b.com", password: "plaintext" });
 

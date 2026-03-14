@@ -3,7 +3,7 @@
 
 import { InvalidCredentialsError } from "../domain/errors.js";
 import { verifyPassword } from "../domain/services/passwordService.js";
-import { issueToken } from "../domain/services/tokenService.js";
+import { issueToken } from "../application/services/tokenService.js";
 import type { User } from "../domain/entities/User.js";
 import type { UserRepositoryPort } from "../ports/user-repository.port.js";
 
@@ -20,7 +20,7 @@ export type LoginOutput = {
 export type LoginUserUseCase = (input: LoginInput) => Promise<LoginOutput>;
 
 export const createLoginUserUseCase =
-  (userRepo: UserRepositoryPort): LoginUserUseCase =>
+  (userRepo: UserRepositoryPort, jwtSecret: string): LoginUserUseCase =>
   async ({ email, password }: LoginInput): Promise<LoginOutput> => {
     const user = await userRepo.findByEmail(email);
     // Always throw the same error to avoid user enumeration (AC 2b)
@@ -29,6 +29,6 @@ export const createLoginUserUseCase =
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) throw new InvalidCredentialsError();
 
-    const token = issueToken(user.id);
+    const token = issueToken(user.id, jwtSecret);
     return { user, token };
   };

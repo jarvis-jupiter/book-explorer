@@ -4,6 +4,7 @@ import {
   Form,
   Link,
   isRouteErrorResponse,
+  useActionData,
   useLoaderData,
   useNavigation,
   useRouteError,
@@ -74,6 +75,9 @@ export async function action(args: ActionFunctionArgs) {
     if (res.status === 201) {
       return json({ success: true });
     }
+
+    // Unexpected API response — surface the error to the user
+    return json({ error: "bookmark_failed" });
   }
   return null;
 }
@@ -166,6 +170,7 @@ const selectClass =
 export default function SearchPage() {
   const { books, query, totalItems, page, pageSize, bookmarkedIds, sort, lang, filter } =
     useLoaderData<typeof loader>();
+  const actionData = useActionData<{ error?: string; success?: boolean }>();
   const navigation = useNavigation();
   const isSearching = navigation.state === "loading";
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -228,6 +233,16 @@ export default function SearchPage() {
       </div>
 
       <div className="py-8 px-8 max-w-7xl mx-auto">
+        {actionData?.error && actionData.error !== "already_bookmarked" && (
+          <div role="alert" className="mb-6 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            Failed to save bookmark. Please try again.
+          </div>
+        )}
+        {actionData?.error === "already_bookmarked" && (
+          <div role="alert" className="mb-6 rounded-xl border border-amber-500/40 bg-amber-950/40 px-4 py-3 text-sm text-amber-300">
+            This book is already in your bookmarks.
+          </div>
+        )}
         {isSearching && (
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {["s1", "s2", "s3", "s4", "s5", "s6"].map((key) => (
